@@ -2,13 +2,29 @@
 
 
 */
-
+#include <Arduino.h>
+#include <Wire.h>
+#include <MPU6050.h>
+#include <TinyGPSPlus.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoOTA.h>
+#include <WebSerial.h>
 #include <Adafruit_NeoPixel.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+// =================== Mine ===================
+#include "defaultMode.h"
+#include "debug.h"
+#include "calibrationMode.h"
+#include "diagnosticsMode.h"
+#include "webServer.h"
+#include "motorControl.h"
+#include "ledControl.h"
+
 #define DEBUG 1
 
-/* debugging time
+//debugging time
 
 #define DEBUG 1  //If you comment this line, the DPRINT & DPRINTLN lines are defined as blank.
 #ifdef DEBUG    //Macros are usually in all capital letters.
@@ -18,9 +34,34 @@
    #define DPRINT(...)     //now defines a blank line
    #define DPRINTLN(...)   //now defines a blank line
 #endif
-*/
 
-// Pin Definitions
+
+// =================== Pin Config ===================
+//need to sort this out still
+#define MOTOR1_IN1 4  // L298N Input Pins for Motor 1
+#define MOTOR1_IN2 5
+#define MOTOR1_EN 6  // PWM Pin for Motor 1 Speed
+
+#define MOTOR2_IN1 1  // L298N Input Pins for Motor 2
+#define MOTOR2_IN2 2
+#define MOTOR2_EN 42  // PWM Pin for Motor 2 Speed
+
+#define ENCODER1_A 7  // Motor 1 Encoder output A
+#define ENCODER1_B 15  // Motor 1 Encoder output B
+#define ENCODER2_A 16  // Motor 2 Encoder output A
+#define ENCODER2_B 17  // Motor 2 Encoder output B
+
+#define TEMP_SENSOR_PIN 18  // Change if needed, avoiding your reserved pins
+#define RELAY_PIN 19         // Change if needed
+const int motorLeftPWM = 5;
+const int motorLeftDir = 4;
+const int motorRightPWM = 6;
+const int motorRightDir = 7;
+
+const int batteryPin = 34; // Analog input
+const int gpsRxPin = 16;   // GPS TX -> ESP RX
+const int gpsTxPin = 17;   // GPS RX -> ESP TX (optional)
+
 const int linearPot1Pin = 6;
 const int linearPot2Pin = 7;
 const int rotaryPot1Pin = 5;
@@ -70,7 +111,44 @@ const int TRIM_MAX = 50;
 const int debounceDelay = 50;
 const int updateDelay = 1000; // 1 second
 
+
+// User-set temperature limits (adjustable in code)
+float TEMP_MIN = 20.0; // Minimum temperature to turn off cooling
+float TEMP_MAX = 30.0; // Maximum temperature to turn on cooling
+
+volatile long pulse_count_motor1 = 0;
+volatile long pulse_count_motor2 = 0;
+volatile int direction_motor1 = 0;  // 1 for forward, -1 for reverse
+volatile int direction_motor2 = 0;
+
+unsigned long last_rpm_update = 0;
+unsigned long rpm_interval = 1000;  // Update RPM every second
+int rpm_motor1 = 0;
+int rpm_motor2 = 0;
+
+// =================== Wi-Fi Setup ===================
+const char* ssid = "homesweethome";
+const char* password = "johnandamy";
+
 AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+// =================== Objects ===================
+MPU6050 mpu;
+TinyGPSPlus gps;
+HardwareSerial gpsSerial(1);
+OneWire oneWire(TEMP_SENSOR_PIN);
+DallasTemperature sensors(&oneWire);
+
+// =================== Globals ===================
+unsigned long lastTelemetryTime = 0;
+int telemetryInterval = 1000;
+// Variables for GPS data
+double currentLat = 29.676096;
+double currentLon = -98.057546;
+// Serial data variable
+String serialData = "";
+bool autoScroll = true;  // Autoscroll toggle
 
 
 void setup() {
@@ -141,119 +219,6 @@ void runTargetStateSetup(int index) {
 
 
 
-void runDefaultSetup() {
-  Serial.println("Switches do not match any target state");
-  
-  
-  // Initialize the hardware components
-  pinMode(linearPot1Pin, INPUT);
-  pinMode(linearPot2Pin, INPUT);
-  pinMode(rotaryPot1Pin, INPUT);
-  pinMode(rotaryPot2Pin, INPUT);
-
-  for (int i = 0; i < numSwitches; i++) {
-    pinMode(toggleSwitchPins[i], INPUT_PULLUP);
-  }
-
-  // Initialize the LED strip
-  strip.begin();
-  strip.show(); // Initialize all pixels to 'off'
-
-  // Set up Wi-Fi
-  WiFi.begin("homesweethome", "johnandamy");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-  }
-  Serial.println("Connected to Wi-Fi");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
-
-  // Set up the web server
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-  // updateWebPage();
-    String html = "<html><head><title>ESP32 Control Panel</title>";
-    html += "<script>";
-    html += "function fetchData() {";
-    html += "  fetch('/data')"; 
-    html += "    .then(response => response.json())"; 
-    html += "    .then(data => {";
-
-    html += "      document.getElementById('Switch1Value').textContent = 'Switch 1: ' + data.Switch1Value;";
-    html += "      document.getElementById('Switch2Value').textContent = 'Switch 2: ' + data.Switch2Value;";
-    html += "      document.getElementById('Switch3Value').textContent = 'Switch 3: ' + data.Switch3Value;";
-    html += "      document.getElementById('Switch4Value').textContent = 'Switch 4: ' + data.Switch4Value;";
-    html += "      document.getElementById('Switch5Value').textContent = 'Switch 5: ' + data.Switch5Value;";
-                
-    html += "      document.getElementById('motorLeftSpeed').textContent = 'Motor Left Speed: ' + data.motorLeftSpeed;";
-    html += "      document.getElementById('motorRightSpeed').textContent = 'Motor Right Speed: ' + data.motorRightSpeed;";
-    html += "      document.getElementById('trimValueLeft').textContent = 'Motor Left Trim: ' + data.trimValueLeft;";
-    html += "      document.getElementById('trimValueRight').textContent = 'Motor Right Trim: ' + data.trimValueRight;";
-    html += "      document.getElementById('linearPot1Value').textContent = 'Linear Pot 1: ' + data.linearPot1Value;";
-    html += "      document.getElementById('linearPot2Value').textContent = 'Linear Pot 2: ' + data.linearPot2Value;";
-    html += "      document.getElementById('rotaryPot1Value').textContent = 'Rotary Pot 1: ' + data.rotaryPot1Value;";
-    html += "      document.getElementById('rotaryPot2Value').textContent = 'Rotary Pot 2: ' + data.rotaryPot2Value;";
-    html += "    });";
-    html += "}";
-    html += "setInterval(fetchData, 1000);"; // Update every second
-    html += "</script>";
-    html += "</head><body>";
-    html += "<h1>ESP32 Control Panel</h1>";
-    html += "<p>Toggle Switches:</p>";
-
-    html += "<p id='Switch1Value'>Switch 1 Value: </p>";
-    html += "<p id='Switch2Value'>Switch 1 Value: </p>";
-    html += "<p id='Switch3Value'>Switch 1 Value: </p>";
-    html += "<p id='Switch4Value'>Switch 1 Value: </p>";
-    html += "<p id='Switch5Value'>Switch 1 Value: </p>";
-    
-    html += "<p id='motorLeftSpeed'>Motor Left Speed: </p>";
-    html += "<p id='motorRightSpeed'>Motor Right Speed: </p>";
-    html += "<p id='trimValueLeft'>Motor Left Trim: </p>";
-    html += "<p id='trimValueRight'>Motor Right Trim: </p>";
-    html += "<p id='linearPot1Value'>Linear Pot 1: </p>";
-    html += "<p id='linearPot2Value'>Linear Pot 2: </p>";
-    html += "<p id='rotaryPot1Value'>Rotary Pot 1: </p>";
-    html += "<p id='rotaryPot2Value'>Rotary Pot 2: </p>";
-
-    // LED Color Display
-    html += "<p>LED Colors:</p>";
-    html += "<div style='display: flex; justify-content: center; align-items: center;'>";
-    for (int i = 0; i < numLEDs; i++) {
-      uint32_t color = strip.getPixelColor(i);
-      int r = (color >> 16) & 0xFF;
-      int g = (color >> 8) & 0xFF;
-      int b = color & 0xFF;
-      html += "<div style='width: 30px; height: 30px; background-color: rgb(" + String(r) + "," + String(g) + "," + String(b) + "); margin: 5px;'></div>";
-    }
-    html += "</div>";
-    html += "</body></html>";
-    request->send(200, "text/html", html);
-  });
-
-  server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request){
-    String json = "{";
-    json += "\"motorLeftSpeed\":" + String(motorLeftSpeed) + ",";
-    json += "\"motorRightSpeed\":" + String(motorRightSpeed) + ",";
-    json += "\"trimValueLeft\":" + String(trimValueLeft) + ",";
-    json += "\"trimValueRight\":" + String(trimValueRight) + ",";
-    json += "\"linearPot1Value\":" + String(linearPot1Value) + ",";
-    json += "\"linearPot2Value\":" + String(linearPot2Value) + ",";
-    json += "\"rotaryPot1Value\":" + String(rotaryPot1Value) + ",";
-    json += "\"rotaryPot2Value\":" + String(rotaryPot2Value) + ",";
-    json += "\"Switch1Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch2Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch3Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch4Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch5Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + "}";    
-    request->send(200, "application/json", json);
-  });
-
-  // Start the server
-  server.begin();
-}
-
 // Define your loop functions for different target states
 void runTargetStateLoop(int index) {
     switch (index){
@@ -271,24 +236,6 @@ void runTargetStateLoop(int index) {
   
 }
 
-void runDefaultLoop() {
-  // Your loop code for the default state here
-  static unsigned long lastUpdate = 0;
-  unsigned long now = millis();
-
-  // Check and update pots and switches
-  checkPots();
-  checkToggleSwitches();
-
-  // Update LEDs
-  updateLEDs();
-
-  // Check if it's time to update
-  if (now - lastUpdate >= updateDelay) {
-    lastUpdate = now;
-    updateWebPage();
-  }
-}
 
 // Functions for checking pots, switches, and updating LEDs
 void checkPots() {

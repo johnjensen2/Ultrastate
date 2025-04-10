@@ -21,6 +21,7 @@
 #include "webServer.h"
 #include "motorControl.h"
 #include "ledControl.h"
+#include "pinConfig.h"
 
 #define DEBUG 1
 
@@ -36,52 +37,14 @@
 #endif
 
 
-// =================== Pin Config ===================
-//need to sort this out still
-#define MOTOR1_IN1 4  // L298N Input Pins for Motor 1
-#define MOTOR1_IN2 5
-#define MOTOR1_EN 6  // PWM Pin for Motor 1 Speed
-
-#define MOTOR2_IN1 1  // L298N Input Pins for Motor 2
-#define MOTOR2_IN2 2
-#define MOTOR2_EN 42  // PWM Pin for Motor 2 Speed
-
-#define ENCODER1_A 7  // Motor 1 Encoder output A
-#define ENCODER1_B 15  // Motor 1 Encoder output B
-#define ENCODER2_A 16  // Motor 2 Encoder output A
-#define ENCODER2_B 17  // Motor 2 Encoder output B
-
-#define TEMP_SENSOR_PIN 18  // Change if needed, avoiding your reserved pins
-#define RELAY_PIN 19         // Change if needed
-const int motorLeftPWM = 5;
-const int motorLeftDir = 4;
-const int motorRightPWM = 6;
-const int motorRightDir = 7;
-
-const int batteryPin = 34; // Analog input
-const int gpsRxPin = 16;   // GPS TX -> ESP RX
-const int gpsTxPin = 17;   // GPS RX -> ESP TX (optional)
-
-const int linearPot1Pin = 6;
-const int linearPot2Pin = 7;
-const int rotaryPot1Pin = 5;
-const int rotaryPot2Pin = 4;
-const int toggleSwitchPins[] = {15, 16, 17, 18, 8}; // Example pins
-const int numSwitches = 5;
+const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
+const int numSwitches = 2;
 
 
-// Define 10 target states
-const bool targetStates[10][numSwitches] = {
-  {1, 0, 1, 0, 1}, //default diagnositcs 
-  {0, 1, 0, 1, 0}, // calibraion mode
-  {1, 1, 0, 0, 1},
-  {0, 0, 1, 1, 0},
-  {1, 0, 0, 1, 1},
-  {0, 1, 1, 0, 1},
-  {1, 1, 1, 0, 0},
-  {0, 0, 0, 1, 1},
-  {1, 0, 1, 1, 0},
-  {0, 1, 0, 1, 1}
+// Define target states
+const bool targetStates[1][numSwitches] = {
+  {1, 0}, //default diagnositcs 
+  {0, 1} // calibraion mode 
 };
 
 bool switchStates[numSwitches];
@@ -150,37 +113,55 @@ double currentLon = -98.057546;
 String serialData = "";
 bool autoScroll = true;  // Autoscroll toggle
 
-
-void setup() {
-  Serial.begin(115200);
-  
-  // Set analog read resolution
-  analogReadResolution(analogResolutionValue);
-  
-  // Initialize switch pins
-  for (int i = 0; i < numSwitches; i++) {
-    pinMode(toggleSwitchPins[i], INPUT_PULLUP); // Use INPUT_PULLUP if your switches are wired to ground
-    switchStates[i] = digitalRead(toggleSwitchPins[i]) == LOW; // Assuming active low configuration
-  }
-
-  // Determine which setup and loop function to call based on switch states
-  int matchedIndex = findMatchingTargetState();
-  if (matchedIndex != -1) {
-    runTargetStateSetup(matchedIndex);
-  } else {
-    runDefaultSetup();
+// =================== WebSocket event handler ===================
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  if (type == WS_EVT_CONNECT) {
+    Serial.println("WebSocket client connected");
+  } else if (type == WS_EVT_DISCONNECT) {
+    Serial.println("WebSocket client disconnected");
+  } else if (type == WS_EVT_DATA) {
+    // Handle incoming data (if needed)
+    String message = String((char*)data);
+    Serial.println("Received message: " + message);
   }
 }
 
-void loop() {
-  // Determine which loop function to call based on switch states
-  int matchedIndex = findMatchingTargetState();
-  if (matchedIndex != -1) {
-    runTargetStateLoop(matchedIndex);
-  } else {
-    runDefaultLoop();
-  }
+// =================== Sensor Reading ===================
+String getIMUData() {
+  // Declare variables for sensor data
+  int16_t ax, ay, az;
+  int16_t gx, gy, gz;
+  
+  // Get the raw sensor data
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  
+  // Return the data as a formatted string
+  return "IMU:AX=" + String(ax) + " AY=" + String(ay) + " AZ=" + String(az) +
+         " GX=" + String(gx) + " GY=" + String(gy) + " GZ=" + String(gz);
 }
+
+String getGPSData() {
+  while (gpsSerial.available()) {
+    gps.encode(gpsSerial.read());
+  }
+
+  if (gps.location.isValid()) {
+    return "GPS:LAT=" + String(gps.location.lat(), 6) +
+           " LNG=" + String(gps.location.lng(), 6);
+  }
+  return "GPS:No Fix";
+}
+
+float readBatteryVoltage() {
+  return analogRead(batteryPin) * (3.3 / 4095.0) * 2; // Adjust if using voltage divider
+}
+// =================== WebSerial Setup ===================
+
+unsigned long last_print_time = millis();
+
+ int matchedIndex =0;
+
+
 
 // Function to compare current states with all target states
 int findMatchingTargetState() {
@@ -217,8 +198,6 @@ void runTargetStateSetup(int index) {
   // Your code for the target state setup here
 }
 
-
-
 // Define your loop functions for different target states
 void runTargetStateLoop(int index) {
     switch (index){
@@ -236,38 +215,6 @@ void runTargetStateLoop(int index) {
   
 }
 
-
-// Functions for checking pots, switches, and updating LEDs
-void checkPots() {
-  int newLinearPot1Value = analogRead(linearPot1Pin);
-  int newLinearPot2Value = analogRead(linearPot2Pin);
-  int newRotaryPot1Value = analogRead(rotaryPot1Pin);
-  int newRotaryPot2Value = analogRead(rotaryPot2Pin);
-
-  // Calculate throttle speeds based on linear pots
-  int throttleLeft = map(newLinearPot1Value, 0, pow(2, analogResolutionValue) - 1, MOTOR_MIN_SPEED, MOTOR_MAX_SPEED);
-  int throttleRight = map(newLinearPot2Value, 0, pow(2, analogResolutionValue) - 1, MOTOR_MIN_SPEED, MOTOR_MAX_SPEED);
-
-  // Adjust trim values based on rotary pots
-  int newTrimValueLeft = map(newRotaryPot1Value, 0, pow(2, analogResolutionValue) - 1, TRIM_MIN, TRIM_MAX);
-  int newTrimValueRight = map(newRotaryPot2Value, 0, pow(2, analogResolutionValue) - 1, TRIM_MIN, TRIM_MAX);
-
-  // Update motor speeds
-  motorLeftSpeed = throttleLeft + newTrimValueLeft;
-  motorRightSpeed = throttleRight + newTrimValueRight;
-
-  // Constrain motor speeds to be within defined limits
-  motorLeftSpeed = constrain(motorLeftSpeed, MOTOR_MIN_SPEED, MOTOR_MAX_SPEED);
-  motorRightSpeed = constrain(motorRightSpeed, MOTOR_MIN_SPEED, MOTOR_MAX_SPEED);
-
-  // Update previous values for pots
-  linearPot1Value = newLinearPot1Value;
-  linearPot2Value = newLinearPot2Value;
-  rotaryPot1Value = newRotaryPot1Value;
-  rotaryPot2Value = newRotaryPot2Value;
-}
-
-
 void checkToggleSwitches() {
   static int lastSwitchStates[numSwitches];
   for (int i = 0; i < numSwitches; i++) {
@@ -283,44 +230,69 @@ void checkToggleSwitches() {
   }
 }
 
-void handleSwitchOn(int switchIndex) {
-  // Action for switch ON
-  Serial.println("Switch " + String(switchIndex + 1) + " ON");
-  // Update corresponding LED
-  strip.setPixelColor(switchIndex, strip.Color(0, 255, 0)); // Green for ON
-  strip.show();
-}
+void setup() {
+  Serial.begin(115200);
 
-void handleSwitchOff(int switchIndex) {
-  // Action for switch OFF
-  Serial.println("Switch " + String(switchIndex + 1) + " OFF");
-  // Update corresponding LED
-  strip.setPixelColor(switchIndex, strip.Color(255, 0, 0)); // Red for OFF
-  strip.show();
-}
+  // Initialize OTA
   
-  void updateWebPage() {
-
-  server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request){
-    String json = "{";
-    json += "\"motorLeftSpeed\":" + String(motorLeftSpeed) + ",";
-    json += "\"motorRightSpeed\":" + String(motorRightSpeed) + ",";
-    json += "\"trimValueLeft\":" + String(trimValueLeft) + ",";
-    json += "\"trimValueRight\":" + String(trimValueRight) + ",";
-    json += "\"linearPot1Value\":" + String(linearPot1Value) + ",";
-    json += "\"linearPot2Value\":" + String(linearPot2Value) + ",";
-    json += "\"rotaryPot1Value\":" + String(rotaryPot1Value) + ",";
-    json += "\"rotaryPot2Value\":" + String(rotaryPot2Value) + ",";
-    json += "\"Switch1Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch2Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch3Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch4Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + ",";
-    json += "\"Switch5Value\":" + String(switchStates[0] == LOW ? "ON" : "OFF") + "}";    
-    request->send(200, "application/json", json);
+    ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else { // U_SPIFFS
+      type = "filesystem";
+    }
+    Serial.println("Start updating " + type);
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+    }
   });
 
+  //need to initilize the motor pins and other pins
+  // Set analog read resolution
+  analogReadResolution(analogResolutionValue);
+
+  // Initialize switch pins
+  for (int i = 0; i < numSwitches; i++) {
+    pinMode(toggleSwitchPins[i], INPUT_PULLUP); // Use INPUT_PULLUP if your switches are wired to ground
+    switchStates[i] = digitalRead(toggleSwitchPins[i]) == LOW; // Assuming active low configuration
   }
+
+  // Determine which setup and loop function to call based on switch states
+  matchedIndex = findMatchingTargetState();
+  if (matchedIndex != -1) {
+    runTargetStateSetup(matchedIndex);
+  } else {
+    runDefaultSetup();
+  }
+
+}
+
+void loop() {
+    //This is needed for OTA updates
+  ArduinoOTA.handle();
+  // Determine which loop function to call based on switch states
   
-  void updateLEDs() {
-    // Placeholder function to update LED colors or states
+  if (matchedIndex != -1) {
+    runTargetStateLoop(matchedIndex);
+  } else {
+    runDefaultLoop();
   }
+}

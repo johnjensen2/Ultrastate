@@ -1,0 +1,102 @@
+#include "fullRuntimeMode.h"
+#include <esp_now.h>
+#include <WiFi.h>
+#include "telemetry.h"
+#include "gps.h"
+#include "motorControl.h"
+#include "pinConfig.h"
+
+
+typedef struct __attribute__((packed)) {
+  int8_t throttleLeft;
+  int8_t throttleRight;
+  uint8_t buttons;
+} ControlPacket;
+
+
+ControlPacket receivedControls;
+TelemetryPacket telemetryData;
+uint8_t remoteMac[6] = {0};  // Set during pairing
+
+//==========
+// mock data
+
+uint8_t throttleLeft = 128;
+uint8_t throttleRight = 128;
+bool button1 = false;
+bool button2 = false;
+uint8_t controlMode = 0;
+
+
+void sendTelemetry() {
+  String telemetry = "GPS:";
+
+  if (gps.location.isValid()) {
+    telemetry += String(gps.location.lat(), 6) + "," + String(gps.location.lng(), 6);
+  } else {
+    telemetry += "INVALID";
+  }
+
+  telemetry += "; RPM1:" + String(rpm_motor1);
+  telemetry += "; RPM2:" + String(rpm_motor2);
+
+  sendTelemetryPacket(telemetry);
+}
+void onDataReceived(const uint8_t* mac, const uint8_t* data, int len) {
+  if (len < 6) {
+    Serial.println("Invalid packet received");
+    return;
+  }
+
+  throttleLeft = data[0];
+  throttleRight = data[1];
+  button1 = data[2];
+  button2 = data[3];
+  controlMode = data[4];
+  // data[5] reserved for future
+
+  Serial.printf("Received: ThrottleLeft=%d, ThrottleRight=%d, B1=%d, B2=%d, Mode=%d\n",
+    throttleLeft,throttleRight, button1, button2, controlMode);
+}
+
+void fullRuntimeSetup() {
+  Serial.println("Full Runtime Mode Setup");
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW Init Failed");
+    return;
+  }
+
+  esp_now_register_recv_cb(onDataReceived);
+
+  // Set remote MAC address (replace with your actual controller MAC)
+  uint8_t controllerMac[6] = {0x24, 0x6F, 0x28, 0xAB, 0xCD, 0xEF};  // <-- update this
+
+  memcpy(remoteMac, controllerMac, 6);  // store for telemetry sending
+
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, controllerMac, 6);
+  peerInfo.channel = 0;  // same channel as current WiFi
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add ESP-NOW peer");
+  } else {
+    Serial.println("Controller paired via ESP-NOW");
+  }
+}
+
+void fullRuntimeLoop() {
+  // Example action
+  if (button1) {
+    digitalWrite(RELAY_PIN, HIGH);
+  } else {
+    digitalWrite(RELAY_PIN, LOW);
+  }
+
+  // More control code here...
+
+  sendTelemetry();
+  delay(100);
+}

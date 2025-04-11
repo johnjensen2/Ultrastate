@@ -5,6 +5,17 @@
 const int motorLeftPin = 25;
 const int motorRightPin = 26;
 
+volatile long pulse_count_motor1 = 0;
+volatile long pulse_count_motor2 = 0;
+volatile int direction_motor1 = 0;  // 1 for forward, -1 for reverse
+volatile int direction_motor2 = 0;
+
+unsigned long last_rpm_update = 0;
+unsigned long rpm_interval = 1000;  // Update RPM every second
+int rpm_motor1 = 0;
+int rpm_motor2 = 0;
+
+
 void initMotors() {
   pinMode(motorLeftPin, OUTPUT);
   pinMode(motorRightPin, OUTPUT);

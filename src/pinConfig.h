@@ -4,7 +4,7 @@
 // =================== Pin Configuration ===================
 
 // Motor 1 (L298N)
-#define MOTOR1_IN1 4
+#define MOTOR1_IN1 22
 #define MOTOR1_IN2 5
 #define MOTOR1_EN  6  // PWM
 
@@ -35,6 +35,13 @@
 #define SWITCH1_PIN 20
 #define SWITCH2_PIN 21
 
+#define wsLedPin 4
+#define wsLedCount 10
+#define wsLedType WS2812B
+#define wsLedColorOrder GRB
+#define wsLedBrightness 50
+#define wsLedMode 0
+#define wsLedSpeed 100
 // Add any additional pins here...
 
 #endif // PIN_CONFIG_H

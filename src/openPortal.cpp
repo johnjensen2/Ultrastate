@@ -13,7 +13,7 @@ void startCaptivePortal(AsyncWebServer &server, DNSServer &dnsServer) {
   dnsServer.start(DNS_PORT, "*", apIP);
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send_P(200, "text/html", openportal_html);
+    request->send(200, "text/html", openportal_html);
   });
 
   server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {

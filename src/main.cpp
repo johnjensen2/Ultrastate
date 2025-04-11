@@ -26,6 +26,9 @@
 //#include "ledControl.h"
 #include "pinConfig.h"
 #include "wifiManager.h"
+#include "telemetry.h"
+#include "gps.h"
+#include "fullRuntimeMode.h"
 
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
@@ -54,7 +57,6 @@ AsyncWebSocket ws("/ws");
 
 // =================== Objects ===================
 MPU6050 mpu;
-TinyGPSPlus gps;
 HardwareSerial gpsSerial(1);
 
 
@@ -203,7 +205,7 @@ void checkForDuplicatePins() {
 
 void setup() {
   Serial.begin(115200);
-
+initGPS();
   // Initialize OTA
   
     ArduinoOTA.onStart([]() {

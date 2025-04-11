@@ -49,15 +49,7 @@ const int updateDelay = 1000; // 1 second
 float TEMP_MIN = 20.0; // Minimum temperature to turn off cooling
 float TEMP_MAX = 30.0; // Maximum temperature to turn on cooling
 
-volatile long pulse_count_motor1 = 0;
-volatile long pulse_count_motor2 = 0;
-volatile int direction_motor1 = 0;  // 1 for forward, -1 for reverse
-volatile int direction_motor2 = 0;
 
-unsigned long last_rpm_update = 0;
-unsigned long rpm_interval = 1000;  // Update RPM every second
-int rpm_motor1 = 0;
-int rpm_motor2 = 0;
 
 void IRAM_ATTR handleEncoderMotor1() {
   int stateA = digitalRead(ENCODER1_A);

@@ -5,6 +5,8 @@
 // Replace with actual MAC address of the remote
 uint8_t remoteAddress[] = {0x24, 0x6F, 0x28, 0xAB, 0xCD, 0xEF};
 
+
+
 void initTelemetry() {
   WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {

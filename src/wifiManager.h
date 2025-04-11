@@ -4,6 +4,7 @@
 #include <WiFi.h>
 
 void connectToWiFi(const char* ssid, const char* password);
+void connectToEspNow(); 
 bool isWiFiConnected();
 
 #endif // WIFI_MANAGER_H

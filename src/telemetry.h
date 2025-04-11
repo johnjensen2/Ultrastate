@@ -22,4 +22,5 @@ void sendTelemetry(const TelemetryPacket &packet);
 
 void sendTelemetryPacket(const String& message);
 
+#define sendTelemetryInterval 1000 // milliseconds = 1 second
 #endif

@@ -5,21 +5,23 @@
 #include "gps.h"
 #include "motorControl.h"
 #include "pinConfig.h"
-
+#include "wifiManager.h"
 
 typedef struct __attribute__((packed)) {
   int8_t throttleLeft;
   bool directionLeft;
   int8_t throttleRight;
   bool directionRight;
-  uint8_t buttons;
+  uint8_t button1;
+  uint8_t button2;
+  uint8_t controlMode;
 } ControlPacket;
 
 
 ControlPacket receivedControls;
 TelemetryPacket telemetryData;
-uint8_t remoteMac[6] = {0};  // Set during pairing
 
+static unsigned long lastTelemetryTime = 0;
 //==========
 // mock data
 
@@ -70,30 +72,8 @@ void onDataReceived(const uint8_t* mac, const uint8_t* data, int len) {
 
 void fullRuntimeSetup() {
   Serial.println("Full Runtime Mode Setup");
-  WiFi.mode(WIFI_STA);
-
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("ESP-NOW Init Failed");
-    return;
-  }
-
+  connectToEspNow();
   esp_now_register_recv_cb(onDataReceived);
-
-  // Set remote MAC address (replace with your actual controller MAC)
-  uint8_t controllerMac[6] = {0x24, 0x6F, 0x28, 0xAB, 0xCD, 0xEF};  // <-- update this
-
-  memcpy(remoteMac, controllerMac, 6);  // store for telemetry sending
-
-  esp_now_peer_info_t peerInfo = {};
-  memcpy(peerInfo.peer_addr, controllerMac, 6);
-  peerInfo.channel = 0;  // same channel as current WiFi
-  peerInfo.encrypt = false;
-
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add ESP-NOW peer");
-  } else {
-    Serial.println("Controller paired via ESP-NOW");
-  }
 }
 
 void fullRuntimeLoop() {
@@ -106,6 +86,11 @@ void fullRuntimeLoop() {
 
   // More control code here...
 
+unsigned long currentTime = millis();
+
+if (currentTime - lastTelemetryTime >= sendTelemetryInterval) {
   sendTelemetry();
-  delay(100);
+  lastTelemetryTime = currentTime;
+}
+
 }

@@ -44,12 +44,6 @@ const bool targetStates[4][numSwitches] = {
 
 bool switchStates[numSwitches];
 
-// LED Strip Setup
-const int numLEDs = 5;
-const int ledPin = 4;
-//Adafruit_NeoPixel strip = Adafruit_NeoPixel(numLEDs, ledPin, NEO_GRB + NEO_KHZ800);
-
-
 
 // =================== Wi-Fi Setup ===================
 

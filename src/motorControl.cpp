@@ -17,8 +17,13 @@ int rpm_motor2 = 0;
 
 
 void initMotors() {
-  pinMode(motorLeftPin, OUTPUT);
-  pinMode(motorRightPin, OUTPUT);
+  pinMode(MOTOR1_IN1, OUTPUT);
+  pinMode(MOTOR1_IN2, OUTPUT);
+  pinMode(MOTOR2_IN1, OUTPUT);
+  pinMode(MOTOR2_IN2, OUTPUT);
+  pinMode(MOTOR1_EN, OUTPUT);
+  pinMode(MOTOR2_EN, OUTPUT);
+
 }
 
 void setMotorSpeeds(int left, int right) {

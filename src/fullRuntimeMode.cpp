@@ -9,7 +9,9 @@
 
 typedef struct __attribute__((packed)) {
   int8_t throttleLeft;
+  bool directionLeft;
   int8_t throttleRight;
+  bool directionRight;
   uint8_t buttons;
 } ControlPacket;
 
@@ -23,6 +25,9 @@ uint8_t remoteMac[6] = {0};  // Set during pairing
 
 uint8_t throttleLeft = 128;
 uint8_t throttleRight = 128;
+bool directionLeft = true;
+bool directionRight = true;
+
 bool button1 = false;
 bool button2 = false;
 uint8_t controlMode = 0;
@@ -49,11 +54,15 @@ void onDataReceived(const uint8_t* mac, const uint8_t* data, int len) {
   }
 
   throttleLeft = data[0];
-  throttleRight = data[1];
-  button1 = data[2];
-  button2 = data[3];
-  controlMode = data[4];
-  // data[5] reserved for future
+  directionLeft = data[1];
+  throttleRight = data[2];  
+  directionRight = data[3];
+  button1 = data[4];
+  button2 = data[5];
+  controlMode = data[6];
+
+  controlMotor(1, throttleLeft, directionLeft);
+  controlMotor(2, throttleRight, directionRight);
 
   Serial.printf("Received: ThrottleLeft=%d, ThrottleRight=%d, B1=%d, B2=%d, Mode=%d\n",
     throttleLeft,throttleRight, button1, button2, controlMode);

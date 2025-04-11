@@ -32,6 +32,7 @@
 #include "aiTrainingMode.h"
 #include "imu.h"
 
+#define TESTING_MODE 0
 
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
@@ -229,6 +230,13 @@ void setup() {
   //need to initilize the motor pins and other pins
   // Set analog read resolution
   analogReadResolution(analogResolutionValue);
+if(TESTING_MODE == 0){  
+  Serial.println("Testing mode is enabled");
+  runDefaultSetup(server);
+}
+else
+{
+  Serial.println("Testing mode is disabled");
 
   // Initialize switch pins
   for (int i = 0; i < numSwitches; i++) {
@@ -243,6 +251,8 @@ void setup() {
   } else {
     runDefaultSetup(server);
   }
+}
+
 //sensors.begin();
 server.begin();
 
@@ -252,12 +262,18 @@ void loop() {
     //This is needed for OTA updates
   ArduinoOTA.handle();
   // Determine which loop function to call based on switch states
-  
+  if(TESTING_MODE == 0){  
+  Serial.println("Testing mode is enabled");
+  runDefaultSetup(server);
+  }
+  else
+  {
   if (matchedIndex != -1) {
     runTargetStateLoop(matchedIndex);
   } else {
     runDefaultLoop();
   }
-  // admin work for all states
+  }
+  // a  dmin work for all states
   //sensors.requestTemperatures();
 }

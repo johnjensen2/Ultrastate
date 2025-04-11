@@ -12,8 +12,8 @@
 #include <ESPAsyncWebServer.h>
 #include <DNSServer.h>
 #include "openPortal.h"
-
-
+#include "imu.h"
+#include <EEPROM.h>
 
 
 void diagnosticsSetup() {
@@ -25,4 +25,17 @@ void diagnosticsLoop() {
   handleCaptivePortal(dnsServer);
   Serial.println("Running diagnostics...");
   delay(1000);
+}
+
+
+void diagnosticsIMU() {
+  // Example: press a button or send a command to calibrate
+  if (Serial.available()) {
+    char cmd = Serial.read();
+    if (cmd == 'c') {
+      calibrateIMU();
+    }
+  }
+
+  delay(100);
 }

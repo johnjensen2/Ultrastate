@@ -7,5 +7,5 @@ extern TinyGPSPlus gps;
 
 void initGPS();
 void updateGPS();
-
+ String getGPSData();
 #endif

@@ -1,6 +1,16 @@
 #include "telemetry.h"
 #include <esp_now.h>
 #include <WiFi.h>
+#include <MPU6050.h>
+#include <TinyGPSPlus.h>
+#include "pinConfig.h"
+#include "gps.h"
+
+
+
+extern MPU6050 mpu;
+extern TinyGPSPlus gps;
+extern HardwareSerial gpsSerial;
 
 // Replace with actual MAC address of the remote
 uint8_t remoteAddress[] = {0x24, 0x6F, 0x28, 0xAB, 0xCD, 0xEF};
@@ -30,3 +40,12 @@ void sendTelemetry(const TelemetryPacket &packet) {
 void sendTelemetryPacket(const String& message) {
   esp_now_send(remoteAddress, (uint8_t *)message.c_str(), message.length());
 }
+
+// =================== Sensor Reading ===================
+
+
+float readBatteryVoltage() {
+  return analogRead(BATTERY_PIN) * (3.3 / 4095.0) * 2; // Adjust if using voltage divider
+}
+
+

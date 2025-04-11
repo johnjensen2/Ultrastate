@@ -30,6 +30,9 @@
 #include "gps.h"
 #include "fullRuntimeMode.h"
 #include "aiTrainingMode.h"
+#include "imu.h"
+
+
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
 
@@ -53,11 +56,10 @@ AsyncWebSocket ws("/ws");
 
 // =================== Objects ===================
 MPU6050 mpu;
-HardwareSerial gpsSerial(1);
-
+HardwareSerial GPS_Serial(1);
+TinyGPSPlus gps;
 
 // =================== Globals ===================
-
 
 // Variables for GPS data
 double currentLat = 29.676096;
@@ -81,34 +83,7 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
 }
 
 // =================== Sensor Reading ===================
-String getIMUData() {
-  // Declare variables for sensor data
-  int16_t ax, ay, az;
-  int16_t gx, gy, gz;
-  
-  // Get the raw sensor data
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-  
-  // Return the data as a formatted string
-  return "IMU:AX=" + String(ax) + " AY=" + String(ay) + " AZ=" + String(az) +
-         " GX=" + String(gx) + " GY=" + String(gy) + " GZ=" + String(gz);
-}
 
-String getGPSData() {
-  while (gpsSerial.available()) {
-    gps.encode(gpsSerial.read());
-  }
-
-  if (gps.location.isValid()) {
-    return "GPS:LAT=" + String(gps.location.lat(), 6) +
-           " LNG=" + String(gps.location.lng(), 6);
-  }
-  return "GPS:No Fix";
-}
-
-float readBatteryVoltage() {
-  return analogRead(BATTERY_PIN) * (3.3 / 4095.0) * 2; // Adjust if using voltage divider
-}
 // =================== WebSerial Setup ===================
 
 unsigned long last_print_time = millis();
@@ -215,7 +190,8 @@ void checkForDuplicatePins() {
 
 void setup() {
   Serial.begin(115200);
-initGPS();
+  initGPS(); // Initialize GPS
+  setupIMU(); // Initialize IMU
   // Initialize OTA
   
     ArduinoOTA.onStart([]() {

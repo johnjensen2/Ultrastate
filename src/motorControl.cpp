@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "motorControl.h"
-
+#include "pinConfig.h"
 // Example motor pin values
 const int motorLeftPin = 25;
 const int motorRightPin = 26;

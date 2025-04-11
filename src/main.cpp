@@ -8,11 +8,14 @@
 #include <TinyGPSPlus.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
 #include <ArduinoOTA.h>
 #include <WebSerial.h>
-#include <Adafruit_NeoPixel.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+//#include <Adafruit_NeoPixel.h>
+//#include <OneWire.h>
+//#include <DallasTemperature.h>
+#include <set>
+
 // =================== Mine ===================
 #include "defaultMode.h"
 #include "debug.h"
@@ -20,29 +23,16 @@
 #include "diagnosticsMode.h"
 #include "webServer.h"
 #include "motorControl.h"
-#include "ledControl.h"
+//#include "ledControl.h"
 #include "pinConfig.h"
-
-#define DEBUG 1
-
-//debugging time
-
-#define DEBUG 1  //If you comment this line, the DPRINT & DPRINTLN lines are defined as blank.
-#ifdef DEBUG    //Macros are usually in all capital letters.
-   #define DPRINT(...)    Serial.print(__VA_ARGS__)     //DPRINT is a macro, debug print
-   #define DPRINTLN(...)  Serial.println(__VA_ARGS__)   //DPRINTLN is a macro, debug print with new line
-#else
-   #define DPRINT(...)     //now defines a blank line
-   #define DPRINTLN(...)   //now defines a blank line
-#endif
-
+#include "wifiManager.h"
 
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
 
 
 // Define target states
-const bool targetStates[1][numSwitches] = {
+const bool targetStates[2][numSwitches] = {
   {1, 0}, //default diagnositcs 
   {0, 1} // calibraion mode 
 };
@@ -52,46 +42,12 @@ bool switchStates[numSwitches];
 // LED Strip Setup
 const int numLEDs = 5;
 const int ledPin = 4;
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(numLEDs, ledPin, NEO_GRB + NEO_KHZ800);
-
-// Variables
-int linearPot1Value = 0;
-int linearPot2Value = 0;
-int rotaryPot1Value = 0;
-int rotaryPot2Value = 0;
-//int switchStates[numSwitches] = {HIGH, HIGH, HIGH, HIGH, HIGH};
-int motorLeftSpeed = 0;
-int motorRightSpeed = 0;
-int trimValueLeft = 0;
-int trimValueRight = 0;
-
-// Constants
-const int analogResolutionValue = 24;
-const int MOTOR_MIN_SPEED = 0;
-const int MOTOR_MAX_SPEED = 255;
-const int TRIM_MIN = -50;
-const int TRIM_MAX = 50;
-const int debounceDelay = 50;
-const int updateDelay = 1000; // 1 second
+//Adafruit_NeoPixel strip = Adafruit_NeoPixel(numLEDs, ledPin, NEO_GRB + NEO_KHZ800);
 
 
-// User-set temperature limits (adjustable in code)
-float TEMP_MIN = 20.0; // Minimum temperature to turn off cooling
-float TEMP_MAX = 30.0; // Maximum temperature to turn on cooling
-
-volatile long pulse_count_motor1 = 0;
-volatile long pulse_count_motor2 = 0;
-volatile int direction_motor1 = 0;  // 1 for forward, -1 for reverse
-volatile int direction_motor2 = 0;
-
-unsigned long last_rpm_update = 0;
-unsigned long rpm_interval = 1000;  // Update RPM every second
-int rpm_motor1 = 0;
-int rpm_motor2 = 0;
 
 // =================== Wi-Fi Setup ===================
-const char* ssid = "homesweethome";
-const char* password = "johnandamy";
+
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -100,8 +56,7 @@ AsyncWebSocket ws("/ws");
 MPU6050 mpu;
 TinyGPSPlus gps;
 HardwareSerial gpsSerial(1);
-OneWire oneWire(TEMP_SENSOR_PIN);
-DallasTemperature sensors(&oneWire);
+
 
 // =================== Globals ===================
 unsigned long lastTelemetryTime = 0;
@@ -112,6 +67,7 @@ double currentLon = -98.057546;
 // Serial data variable
 String serialData = "";
 bool autoScroll = true;  // Autoscroll toggle
+const int analogResolutionValue = 24;
 
 // =================== WebSocket event handler ===================
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
@@ -153,7 +109,7 @@ String getGPSData() {
 }
 
 float readBatteryVoltage() {
-  return analogRead(batteryPin) * (3.3 / 4095.0) * 2; // Adjust if using voltage divider
+  return analogRead(BATTERY_PIN) * (3.3 / 4095.0) * 2; // Adjust if using voltage divider
 }
 // =================== WebSerial Setup ===================
 
@@ -161,7 +117,14 @@ unsigned long last_print_time = millis();
 
  int matchedIndex =0;
 
-
+bool compareStates(const bool currentState[], const bool targetState[]) {
+  for (int i = 0; i < numSwitches; i++) {
+    if (currentState[i] != targetState[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // Function to compare current states with all target states
 int findMatchingTargetState() {
@@ -173,14 +136,7 @@ int findMatchingTargetState() {
   return -1; // Return -1 if no match is found
 }
 
-bool compareStates(const bool currentState[], const bool targetState[]) {
-  for (int i = 0; i < numSwitches; i++) {
-    if (currentState[i] != targetState[i]) {
-      return false;
-    }
-  }
-  return true;
-}
+
 
 // Define your setup functions for different target states
 void runTargetStateSetup(int index) {
@@ -188,11 +144,11 @@ void runTargetStateSetup(int index) {
   Serial.println(index);
   switch (index){
     case 0:
-    diagno_setup();
+    runDefaultSetup(server);
     case 1:
-    calbration_setup();
+   runDefaultSetup(server);
     default:
-    runDefaultSetup();
+    runDefaultSetup(server);
     
   }
   // Your code for the target state setup here
@@ -202,13 +158,13 @@ void runTargetStateSetup(int index) {
 void runTargetStateLoop(int index) {
     switch (index){
     case 0:
-    diagno_loop();
+    runDefaultLoop();
     break;
     case 1:
-    calbration_loop();
+    runDefaultLoop();
     break;
     default:
-    runDefaultSetup();
+    runDefaultLoop();
     break;
     }
   // Your loop code for the target state here
@@ -222,12 +178,27 @@ void checkToggleSwitches() {
     if (currentState != lastSwitchStates[i]) {
       lastSwitchStates[i] = currentState;
       if (currentState == LOW) { // Assuming LOW means ON
-        handleSwitchOn(i);
-      } else {
-        handleSwitchOff(i);
+    
       }
     }
   }
+}
+
+void checkForDuplicatePins() {
+    std::set<int> usedPins = {
+        MOTOR1_IN1, MOTOR1_IN2, MOTOR1_EN,
+        MOTOR2_IN1, MOTOR2_IN2, MOTOR2_EN,
+        ENCODER1_A, ENCODER1_B,
+        ENCODER2_A, ENCODER2_B,
+        TEMP_SENSOR_PIN, RELAY_PIN,
+        BATTERY_PIN, GPS_RX_PIN, GPS_TX_PIN
+    };
+
+    if (usedPins.size() < 15) {
+        Serial.println("[⚠️ WARNING] Duplicate pins detected in configuration!");
+    } else {
+        Serial.println("[✅ Pin Check] All pins are uniquely defined.");
+    }
 }
 
 void setup() {
@@ -265,6 +236,8 @@ void setup() {
     }
   });
 
+  checkForDuplicatePins();
+
   //need to initilize the motor pins and other pins
   // Set analog read resolution
   analogReadResolution(analogResolutionValue);
@@ -280,8 +253,10 @@ void setup() {
   if (matchedIndex != -1) {
     runTargetStateSetup(matchedIndex);
   } else {
-    runDefaultSetup();
+    runDefaultSetup(server);
   }
+//sensors.begin();
+server.begin();
 
 }
 
@@ -295,4 +270,6 @@ void loop() {
   } else {
     runDefaultLoop();
   }
+  // admin work for all states
+  //sensors.requestTemperatures();
 }

@@ -16,8 +16,9 @@
 // Encoders
 #define ENCODER1_A 7
 #define ENCODER1_B 15
-#define ENCODER2_A 16
-#define ENCODER2_B 17
+
+#define ENCODER2_A 8
+#define ENCODER2_B 9
 
 // Sensors and Actuators
 #define TEMP_SENSOR_PIN 18

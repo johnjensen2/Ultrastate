@@ -1,7 +1,9 @@
 #include <ESPAsyncWebServer.h>
 #include "webServer.h"
+#include "motorControl.h"
+#include "pinConfig.h"
+#include "defaultMode.h"
 
-AsyncWebServer server(80);
 
 void initWebServer() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {

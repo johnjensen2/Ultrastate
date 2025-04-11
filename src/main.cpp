@@ -29,15 +29,17 @@
 #include "telemetry.h"
 #include "gps.h"
 #include "fullRuntimeMode.h"
-
+#include "aiTrainingMode.h"
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
 
 
 // Define target states
-const bool targetStates[2][numSwitches] = {
+const bool targetStates[4][numSwitches] = {
+  {0, 0}, // full runtime mode
   {1, 0}, //default diagnositcs 
-  {0, 1} // calibraion mode 
+  {0, 1}, // calibraion mode 
+  {1, 1} // AI Training mode 
 };
 
 bool switchStates[numSwitches];
@@ -146,9 +148,16 @@ void runTargetStateSetup(int index) {
   Serial.println(index);
   switch (index){
     case 0:
-    runDefaultSetup(server);
+    fullRuntimeSetup();
+    break;
     case 1:
    runDefaultSetup(server);
+    break;
+    case 2:
+    runCalibrationSetup(server);
+    break;
+    case 3:
+    runAITrainingSetup(server);
     default:
     runDefaultSetup(server);
     
@@ -160,11 +169,18 @@ void runTargetStateSetup(int index) {
 void runTargetStateLoop(int index) {
     switch (index){
     case 0:
+    fullRuntimeLoop();
+    break;
+    case 1: 
     runDefaultLoop();
     break;
-    case 1:
-    runDefaultLoop();
+    case 2:
+    runCalibrationLoop();
     break;
+    case 3:
+    runAITrainingLoop();
+    break;
+
     default:
     runDefaultLoop();
     break;

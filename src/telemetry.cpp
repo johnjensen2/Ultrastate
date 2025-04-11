@@ -25,7 +25,6 @@ void sendTelemetry(const TelemetryPacket &packet) {
   
 }
 
-
 void sendTelemetryPacket(const String& message) {
   esp_now_send(remoteAddress, (uint8_t *)message.c_str(), message.length());
 }

@@ -1,7 +1,10 @@
 #ifndef CALIBRATION_MODE_H
 #define CALIBRATION_MODE_H
 
-void calibrationSetup();
-void calibrationLoop();
+#include <Arduino.h>
+#include <ESPAsyncWebServer.h>
+
+void runCalibrationSetup(AsyncWebServer& server);
+void runCalibrationLoop();
 
 #endif

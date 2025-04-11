@@ -57,8 +57,8 @@ HardwareSerial gpsSerial(1);
 
 
 // =================== Globals ===================
-unsigned long lastTelemetryTime = 0;
-int telemetryInterval = 1000;
+
+
 // Variables for GPS data
 double currentLat = 29.676096;
 double currentLon = -98.057546;

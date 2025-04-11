@@ -21,7 +21,6 @@ typedef struct __attribute__((packed)) {
 ControlPacket receivedControls;
 TelemetryPacket telemetryData;
 
-static unsigned long lastTelemetryTime = 0;
 //==========
 // mock data
 

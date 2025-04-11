@@ -22,5 +22,6 @@ void sendTelemetry(const TelemetryPacket &packet);
 
 void sendTelemetryPacket(const String& message);
 
+extern unsigned long lastTelemetryTime; //used only in full runtime mode
 #define sendTelemetryInterval 1000 // milliseconds = 1 second
 #endif

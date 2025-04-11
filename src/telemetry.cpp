@@ -5,7 +5,7 @@
 // Replace with actual MAC address of the remote
 uint8_t remoteAddress[] = {0x24, 0x6F, 0x28, 0xAB, 0xCD, 0xEF};
 
-
+ unsigned long lastTelemetryTime= 1000;
 
 void initTelemetry() {
   WiFi.mode(WIFI_STA);

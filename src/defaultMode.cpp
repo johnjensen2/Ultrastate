@@ -17,6 +17,8 @@
 #include "motorControl.h"
 #include "pinConfig.h"
 #include "wifiManager.h"
+#include "servoControl.h"
+
 
 // Variables
 int linearPot1Value = 0;
@@ -107,8 +109,26 @@ void runDefaultSetup(AsyncWebServer& server) {
   Serial.println(WiFi.softAPIP());
  
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", defaultMode_html);  // No processor used here
+    request->send(200, "text/html", defaultMode2_html);  // No processor used here
   });
+
+server.on("/openServo1", HTTP_GET, [](AsyncWebServerRequest *request){
+  sendServoOpen(1);
+  request->send(200, "text/plain", "Servo 1 Opened");
+});
+server.on("/closeServo1", HTTP_GET, [](AsyncWebServerRequest *request){
+  sendServoClose(1);
+  request->send(200, "text/plain", "Servo 1 Closed");
+});
+
+server.on("/openServo2", HTTP_GET, [](AsyncWebServerRequest *request){
+  sendServoOpen(2);
+  request->send(200, "text/plain", "Servo 2 Opened");
+});
+server.on("/closeServo2", HTTP_GET, [](AsyncWebServerRequest *request){
+  sendServoClose(2);
+  request->send(200, "text/plain", "Servo 2 Closed");
+});
 
   server.on("/updateMotor1", HTTP_GET, [](AsyncWebServerRequest *request) {
     String speed = request->getParam("speed")->value();

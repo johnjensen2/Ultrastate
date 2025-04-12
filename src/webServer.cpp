@@ -177,3 +177,261 @@ function resetEmergencyStop() {
   </body>
 </html>
 )rawliteral";
+
+const char defaultMode2_html[] = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tank Control - Dark Mode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    h3 {
+      margin: 0;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background-color: #1f1f1f;
+      border-bottom: 2px solid #333;
+    }
+    .battery-container {
+      display: flex;
+      align-items: center;
+    }
+    .battery-icon {
+      width: 40px;
+      height: 20px;
+      border: 2px solid #888;
+      border-radius: 3px;
+      position: relative;
+      margin-right: 10px;
+    }
+    .battery-icon::after {
+      content: "";
+      position: absolute;
+      right: -6px;
+      top: 4px;
+      width: 4px;
+      height: 12px;
+      background-color: #888;
+      border-radius: 1px;
+    }
+    .battery-level {
+      height: 100%;
+      width: 60%;
+      background-color: #4caf50;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 60vh;
+    }
+    .joystick-zone {
+      width: 150px;
+      height: 150px;
+      margin: 20px;
+      background-color: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 10px;
+      position: relative;
+      touch-action: none;
+    }
+    .center-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 20px;
+    }
+    .estop, .stopAll {
+      background-color: #333;
+      color: white;
+      font-size: 18px;
+      padding: 12px 24px;
+      border: none;
+      cursor: pointer;
+      margin: 10px;
+      border-radius: 8px;
+      transition: background-color 0.3s;
+    }
+    .estop.active {
+      background-color: red;
+    }
+    .estop:hover, .stopAll:hover {
+      background-color: #555;
+    }
+    .drop-row {
+      display: flex;
+      justify-content: center;
+      margin-top: -20px;
+      margin-bottom: 10px;
+    }
+
+.drop-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: -45px;
+  gap: 150px;
+  width: 100%;
+}
+  background-color: #555;
+color: white;
+      font-size: 18px;
+      padding: 12px 24px;
+      margin: 0 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      }
+.dropBtn.red {
+  background-color: red;
+}
+    .dropBtn:disabled {
+      background-color: #777;
+      cursor: not-allowed;
+    }
+    .dropBtn:hover:not(:disabled) {
+      background-color: #555;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+</head>
+<body>
+  <div class="top-bar">
+    <h3>RC Tank Control</h3>
+    <div class="battery-container">
+      <div class="battery-icon">
+        <div class="battery-level" id="batteryLevel"></div>
+      </div>
+      <span id="batteryStatus">Battery: N/A</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="left_joystick" class="joystick-zone"></div>
+    <div class="center-controls">
+      <button class="stopAll" onclick="stopAllMotors()">STOP ALL</button>
+      <button class="estop" id="estopBtn" onclick="emergencyStop()">EMERGENCY STOP</button>
+    </div>
+    <div id="right_joystick" class="joystick-zone"></div>
+  </div>
+
+<div class="drop-buttons">
+  <button class="drop estop" id="drop1" onclick="sendServoCommand(1)">DROP 1</button>
+  <button class="drop estop" id="drop2" onclick="sendServoCommand(2)">DROP 2</button>
+</div>
+
+  <script>
+    const deadZone = 0.2;
+    let estopActive = false;
+
+    function sendMotorCommand(motor, speed, direction) {
+      fetch(`/updateMotor${motor}?speed=${speed}&direction=${direction}`);
+    }
+
+    function stopAllMotors() {
+      sendMotorCommand(1, 0, "stop");
+      sendMotorCommand(2, 0, "stop");
+    }
+
+    function emergencyStop() {
+      fetch('/emergencyStop');
+      estopActive = true;
+      const btn = document.getElementById("estopBtn");
+      btn.classList.add("active");
+      btn.textContent = "STOPPED";
+    }
+// servoControl.js
+
+const servoStates = {
+  drop1: false,
+  drop2: false
+};
+
+function sendServoCommand(dropNum) {
+  const buttonId = `drop${dropNum}`;
+  const button = document.getElementById(buttonId);
+  const isOpen = servoStates[buttonId];
+
+  // Toggle state
+  servoStates[buttonId] = !isOpen;
+
+  if (servoStates[buttonId]) {
+    // If it's open now, allow retraction
+    button.style.backgroundColor = 'green';
+    button.textContent = `OPEN ${dropNum}`;
+    sendServoOpen(dropNum);
+  } else {
+    // If it's closed now, show as DROP again
+    button.style.backgroundColor = 'red';
+    button.textContent = `CLOSE ${dropNum}`;
+    sendServoClose(dropNum);
+  }
+}
+
+function sendServoOpen(dropNum) {
+  fetch(`/openServo${dropNum}`);
+}
+
+function sendServoClose(dropNum) {
+  fetch(`/closeServo${dropNum}`);
+}
+
+
+
+    function createJoystick(id, motorNumber) {
+      const zone = document.getElementById(id);
+      const joystick = nipplejs.create({
+        zone: zone,
+        mode: 'static',
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+        size: 120,
+        restOpacity: 0.6,
+      });
+
+      joystick.on('move', (evt, data) => {
+        if (!data || !data.vector) return;
+        const dy = data.vector.y;
+        const distance = Math.min(data.distance / (data.instance.options.size / 2), 1);
+        const abs = Math.abs(dy);
+
+        if (abs < deadZone) {
+          sendMotorCommand(motorNumber, 0, "stop");
+          return;
+        }
+
+        const speed = Math.floor(2000 * abs);
+        const direction = dy < 0 ? "forward" : "reverse";
+        sendMotorCommand(motorNumber, speed, direction);
+      });
+
+      joystick.on('end', () => {
+        sendMotorCommand(motorNumber, 0, "stop");
+      });
+    }
+
+    window.onload = () => {
+      createJoystick("left_joystick", 1);
+      createJoystick("right_joystick", 2);
+    };
+
+    function updateBatteryDisplay(percent) {
+      document.getElementById("batteryStatus").textContent = `Battery: ${percent}%`;
+      document.getElementById("batteryLevel").style.width = `${percent}%`;
+      const level = document.getElementById("batteryLevel");
+      level.style.backgroundColor = percent > 50 ? '#4caf50' : percent > 20 ? '#ff9800' : '#f44336';
+    }
+  </script>
+</body>
+</html>
+)rawliteral";

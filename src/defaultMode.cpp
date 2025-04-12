@@ -18,12 +18,6 @@
 #include "pinConfig.h"
 #include "wifiManager.h"
 
-
-
-
-const char* ssid = "homesweethome";
-const char* password = "johnandamy";
-
 // Variables
 int linearPot1Value = 0;
 int linearPot2Value = 0;
@@ -82,8 +76,8 @@ void IRAM_ATTR handleEncoderMotor2() {
 void runDefaultSetup(AsyncWebServer& server) {
   Serial.begin(115200);
 
- connectToWiFi(ssid, password);
-  
+  connectToWiFi(ssid, password);
+  setupOTA();
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH); // Ensure relay is off at startup
 
@@ -144,7 +138,6 @@ void runDefaultSetup(AsyncWebServer& server) {
   server.onNotFound([](AsyncWebServerRequest *request) {
         request->redirect("/");
     });
-
 
 }
 

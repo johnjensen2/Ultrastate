@@ -32,7 +32,6 @@
 #include "aiTrainingMode.h"
 #include "imu.h"
 
-#define TESTING_MODE 0
 
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
@@ -50,7 +49,6 @@ bool switchStates[numSwitches];
 
 
 // =================== Wi-Fi Setup ===================
-
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -118,16 +116,17 @@ void runTargetStateSetup(int index) {
   Serial.println(index);
   switch (index){
     case 0:
-    fullRuntimeSetup();
+    runDefaultSetup(server);
     break;
     case 1:
    runDefaultSetup(server);
     break;
     case 2:
-    runCalibrationSetup(server);
+    runDefaultSetup(server);
     break;
     case 3:
-    runAITrainingSetup(server);
+    runDefaultSetup(server);
+    break;
     default:
     runDefaultSetup(server);
     
@@ -139,16 +138,16 @@ void runTargetStateSetup(int index) {
 void runTargetStateLoop(int index) {
     switch (index){
     case 0:
-    fullRuntimeLoop();
+   runDefaultLoop();
     break;
     case 1: 
     runDefaultLoop();
     break;
     case 2:
-    runCalibrationLoop();
+    runDefaultLoop();
     break;
     case 3:
-    runAITrainingLoop();
+    runDefaultLoop();
     break;
 
     default:
@@ -193,50 +192,12 @@ void setup() {
   Serial.begin(115200);
   initGPS(); // Initialize GPS
   setupIMU(); // Initialize IMU
-  // Initialize OTA
-  
-    ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH) {
-      type = "sketch";
-    } else { // U_SPIFFS
-      type = "filesystem";
-    }
-    Serial.println("Start updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      Serial.println("Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      Serial.println("Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      Serial.println("Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      Serial.println("Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      Serial.println("End Failed");
-    }
-  });
+
 
   checkForDuplicatePins();
 
-  //need to initilize the motor pins and other pins
   // Set analog read resolution
   analogReadResolution(analogResolutionValue);
-if(TESTING_MODE == 0){  
-  Serial.println("Testing mode is enabled");
-  runDefaultSetup(server);
-}
-else
-{
-  Serial.println("Testing mode is disabled");
 
   // Initialize switch pins
   for (int i = 0; i < numSwitches; i++) {
@@ -250,30 +211,20 @@ else
     runTargetStateSetup(matchedIndex);
   } else {
     runDefaultSetup(server);
-  }
-}
+  } 
 
-//sensors.begin();
-server.begin();
+ server.begin();
 
 }
 
 void loop() {
-    //This is needed for OTA updates
-  ArduinoOTA.handle();
+
   // Determine which loop function to call based on switch states
-  if(TESTING_MODE == 0){  
-  Serial.println("Testing mode is enabled");
-  runDefaultSetup(server);
-  }
-  else
-  {
-  if (matchedIndex != -1) {
+
+   if (matchedIndex != -1) {
     runTargetStateLoop(matchedIndex);
   } else {
     runDefaultLoop();
   }
-  }
-  // a  dmin work for all states
-  //sensors.requestTemperatures();
 }
+  

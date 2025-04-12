@@ -1,0 +1,40 @@
+name: Render OpenSCAD Thumbnails
+
+on:
+  push:
+    paths:
+      - 'cad/*.scad' # Trigger this action only for .scad files
+  pull_request:
+    paths:
+      - 'cad/*.scad'
+
+jobs:
+  render-thumbnail:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Set up OpenSCAD
+      - name: Set up OpenSCAD
+        run: |
+          sudo apt update
+          sudo apt install -y openscad
+
+      # Render thumbnails for all .scad files
+      - name: Render Thumbnails
+        run: |
+          mkdir -p cad/thumbnails
+          for file in cad/*.scad; do
+            output="cad/thumbnails/$(basename ${file%.scad}.png)"
+            openscad -o $output $file
+          done
+
+      # Commit and push the thumbnails back to the repo
+      - name: Commit and Push Thumbnails
+        uses: EndBug/add-and-commit@v7
+        with:
+          author_name: 'GitHub Actions'
+          author_email: 'actions@github.com'
+          message: 'Auto-generate thumbnails for .scad files'

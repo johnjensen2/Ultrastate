@@ -107,7 +107,7 @@ void runDefaultSetup(AsyncWebServer& server) {
   Serial.println(WiFi.softAPIP());
  
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", index_html);  // No processor used here
+    request->send(200, "text/html", defaultMode_html);  // No processor used here
   });
 
   server.on("/updateMotor1", HTTP_GET, [](AsyncWebServerRequest *request) {

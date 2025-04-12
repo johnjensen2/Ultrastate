@@ -42,9 +42,18 @@ void initWebServer() {
   server.begin();
 }
 
+const char index_html[] = R"rawliteral(
+<!DOCTYPE html>
+<html>
+</html>
+)rawliteral";
+
+
+
+
 
 // Declare the index_html string here (without PROGMEM for now)
-const char index_html[] = R"rawliteral(
+const char defaultMode_html[] = R"rawliteral(
 <!DOCTYPE html>
 <html>
   <head>
@@ -70,7 +79,19 @@ const char index_html[] = R"rawliteral(
       }
       .button { width: 150px; height: 50px; margin: 10px; font-size: 18px; }
       .rpm { font-size: 24px; margin: 20px; }
-      .estop { background-color: red; color: white; font-size: 22px; padding: 15px; border: none; cursor: pointer; }
+.estop {
+  background-color: grey;
+  color: white;
+  font-size: 22px;
+  padding: 15px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.estop.active {
+  background-color: red;
+}
+
     </style>
     <script>
       document.addEventListener("DOMContentLoaded", function() {
@@ -79,6 +100,7 @@ const char index_html[] = R"rawliteral(
     </script>
   </head>
   <body>
+  
     <button class="estop" onclick="emergencyStop()">EMERGENCY STOP</button>
     <div class="controls">
       <div class="slider-container">
@@ -90,6 +112,7 @@ const char index_html[] = R"rawliteral(
         <button class="button" id="motor2_button" onclick="toggleMotor2()">Forward</button>
       </div>
     </div>
+<button onclick="resetEmergencyStop()" style="margin-top: 10px; padding: 10px;">Reset Emergency</button>
 
     <script>
       let motor1Direction = 'forward';
@@ -124,9 +147,22 @@ const char index_html[] = R"rawliteral(
       }
       
       // Emergency stop function
-      function emergencyStop() {
-        fetch('/emergencyStop');
-      }
+function emergencyStop() {
+  fetch('/emergencyStop')
+    .then(() => {
+      const button = document.querySelector('.estop');
+      button.classList.add('active');
+      button.disabled = true;
+    });
+}
+function resetEmergencyStop() {
+  fetch('/resetEmergencyStop')
+    .then(() => {
+      const button = document.querySelector('.estop');
+      button.classList.remove('active');
+      button.disabled = false;
+    });
+}
 
       // Function to update RPM values (if needed)
       function updateRPM() {
@@ -140,8 +176,4 @@ const char index_html[] = R"rawliteral(
     </script>
   </body>
 </html>
-
-
-
-
 )rawliteral";

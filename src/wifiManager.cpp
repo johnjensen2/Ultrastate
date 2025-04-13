@@ -5,11 +5,14 @@
 
 const char* ssid = "homesweethome";
 const char* password = "johnandamy";
+const char* deviceHostname = "Water_Tank";
 
 uint8_t remoteMac[6] = {0};  // Set during pairing
 
 void connectToWiFi(const char* ssid, const char* password) {
     WiFi.begin(ssid, password);
+    WiFi.setHostname(deviceHostname);
+    
     Serial.print("Connecting to WiFi");
     int retry = 0;
     while (WiFi.status() != WL_CONNECTED && retry < 30) {

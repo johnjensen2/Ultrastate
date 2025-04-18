@@ -1,6 +1,5 @@
-
-
- ADC_MODE(ADC_VCC);
+ //ADC_MODE(ADC_VCC);
+ /*
 const char* ssid = "homesweethome";
 const char* password = "johnandamy";
 
@@ -9,7 +8,7 @@ const int smtpPort = 465;
 
 // Replace these with your info
 const char* emailSender = "john.jensen.2@gmail.com";
-const char* appPassword = "mszositrgarvorca"; // 16-digit App Password from Google no spaces
+const char* appPassword = ""; // 16-digit App Password from Google no spaces
 const char* emailRecipient = "john.jensen.2@gmail.com";
 const char* deviceHostname = "esp-beacon";
 
@@ -250,4 +249,4 @@ String base64Encode(const char* input) {
   }
 
   return output;
-}
+}*/

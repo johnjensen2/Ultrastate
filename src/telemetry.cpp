@@ -49,3 +49,8 @@ float readBatteryVoltage() {
 }
 
 
+// float readBatteryVoltage() {
+//   float volts = ESP.getVcc();
+//   //return analogRead(A0) * (4.2 / 1023.0); // Adjust scaling if needed
+//   return volts/1000;
+// }  

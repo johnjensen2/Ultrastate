@@ -13,7 +13,8 @@ namespace tempControl {
   void begin(uint8_t sensorPin, uint8_t relayPin);
   float getTemperature();
   bool isRelayOn();
-}
+  extern bool relayIsOn;
+  }
 
 #endif
 

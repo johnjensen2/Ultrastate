@@ -32,8 +32,8 @@
 #define GPS_TX_PIN 17  // GPS RX -> ESP TX (optional)
 
 //Switch Pins for mode
-#define SWITCH1_PIN 10
-#define SWITCH2_PIN 1
+#define SWITCH1_PIN 36
+#define SWITCH2_PIN 37
 
 #define wsLedPin 4
 #define wsLedCount 10

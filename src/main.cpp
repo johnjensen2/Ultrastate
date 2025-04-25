@@ -33,9 +33,11 @@
 #include "imu.h"
 #include "tempControl.h"
 #include "BatteryControls.h"
+#include"SwitchControls.h"
 
-const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
-const int numSwitches = 2;
+
+//const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
+//const int numSwitches = 2;
 
 
 // Define target states

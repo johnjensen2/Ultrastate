@@ -2,13 +2,15 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+
+
 namespace tempControl {
   static OneWire* oneWire = nullptr;
   static DallasTemperature* sensors = nullptr;
   static TaskHandle_t tempTaskHandle = nullptr;
   static float currentTemp = 0.0;
   static uint8_t relayPin;
-  static bool relayIsOn = false;
+  bool relayIsOn = false;
 
   const float TEMP_HIGH = 50.0;  // Turn ON relay above this
   const float TEMP_LOW  = 30.0;  // Turn OFF relay below this

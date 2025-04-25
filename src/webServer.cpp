@@ -3,7 +3,7 @@
 #include "motorControl.h"
 #include "pinConfig.h"
 #include "defaultMode.h"
-
+#include "tempControl.h"
 
 void initWebServer() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -54,135 +54,14 @@ const char index_html[] = R"rawliteral(
 
 // Declare the index_html string here (without PROGMEM for now)
 const char defaultMode_html[] = R"rawliteral(
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Motor Control</title>
-    <style>
-      body { font-family: Arial; text-align: center; margin: 0; padding: 0; overflow: hidden; }
-      .controls {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .slider-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 20px;
-      }
-      .slider {
-        writing-mode: bt-lr;
-        -webkit-appearance: slider-vertical;
-        width: 15px;
-        height: 150px;
-      }
-      .button { width: 150px; height: 50px; margin: 10px; font-size: 18px; }
-      .rpm { font-size: 24px; margin: 20px; }
-.estop {
-  background-color: grey;
-  color: white;
-  font-size: 22px;
-  padding: 15px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-.estop.active {
-  background-color: red;
-}
-
-    </style>
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        document.documentElement.requestFullscreen();
-      });
-    </script>
-  </head>
-  <body>
-  
-    <button class="estop" onclick="emergencyStop()">EMERGENCY STOP</button>
-    <div class="controls">
-      <div class="slider-container">
-        <input type="range" min="0" max="2000" value="0" class="slider" id="motor1_speed" orient="vertical" oninput="updateMotor1Speed()">
-        <button class="button" id="motor1_button" onclick="toggleMotor1()">Forward</button>
-      </div>
-      <div class="slider-container">
-        <input type="range" min="0" max="2000" value="0" class="slider" id="motor2_speed" orient="vertical" oninput="updateMotor2Speed()">
-        <button class="button" id="motor2_button" onclick="toggleMotor2()">Forward</button>
-      </div>
-    </div>
-<button onclick="resetEmergencyStop()" style="margin-top: 10px; padding: 10px;">Reset Emergency</button>
-
-    <script>
-      let motor1Direction = 'forward';
-      let motor2Direction = 'forward';
-      
-      // Function to update motor 1 speed based on the slider input
-      function updateMotor1Speed() {
-        const speed = document.getElementById('motor1_speed').value;
-        fetch(`/updateMotor1?speed=${speed}&direction=${motor1Direction}`);
-      }
-      
-      // Function to update motor 2 speed based on the slider input
-      function updateMotor2Speed() {
-        const speed = document.getElementById('motor2_speed').value;
-        fetch(`/updateMotor2?speed=${speed}&direction=${motor2Direction}`);
-      }
-      
-      // Function to toggle motor 1 direction
-      function toggleMotor1() {
-        const speed = document.getElementById('motor1_speed').value;
-        motor1Direction = motor1Direction === 'forward' ? 'reverse' : 'forward';
-        document.getElementById('motor1_button').textContent = motor1Direction === 'forward' ? 'Forward' : 'Reverse';
-        fetch(`/updateMotor1?speed=${speed}&direction=${motor1Direction}`);
-      }
-      
-      // Function to toggle motor 2 direction
-      function toggleMotor2() {
-        const speed = document.getElementById('motor2_speed').value;
-        motor2Direction = motor2Direction === 'forward' ? 'reverse' : 'forward';
-        document.getElementById('motor2_button').textContent = motor2Direction === 'forward' ? 'Forward' : 'Reverse';
-        fetch(`/updateMotor2?speed=${speed}&direction=${motor2Direction}`);
-      }
-      
-      // Emergency stop function
-function emergencyStop() {
-  fetch('/emergencyStop')
-    .then(() => {
-      const button = document.querySelector('.estop');
-      button.classList.add('active');
-      button.disabled = true;
-    });
-}
-function resetEmergencyStop() {
-  fetch('/resetEmergencyStop')
-    .then(() => {
-      const button = document.querySelector('.estop');
-      button.classList.remove('active');
-      button.disabled = false;
-    });
-}
-
-      // Function to update RPM values (if needed)
-      function updateRPM() {
-        fetch('/rpm').then(response => response.json()).then(data => {
-          document.getElementById('motor1_rpm').textContent = data.motor1_rpm;
-          document.getElementById('motor2_rpm').textContent = data.motor2_rpm;
-        });
-      }
-      
-      setInterval(updateRPM, 1000);
-    </script>
-  </body>
-</html>
 )rawliteral";
+
 
 const char defaultMode2_html[] = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
+  <meta charset="UTF-8">
   <title>Tank Control - Dark Mode</title>
   <style>
     body {
@@ -297,37 +176,52 @@ const char defaultMode2_html[] = R"rawliteral(
     .drop:hover:not(:disabled) {
       background-color: #555;
     }
+    .switchCircle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #bbb;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2em;
+      transition: background-color 0.3s ease;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 </head>
 <body>
   <div class="top-bar">
-    <div>
-<h3>RC Tank Control</h3>
-<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
-  <div id="gpsLocation" style="font-size: 14px; color: #aaa;">GPS: Waiting...</div>
-  <div id="tempStatus" style="font-size: 14px; color: #aaa;">Temp: Waiting...</div>
-  
-  <div style="display: flex; align-items: center; gap: 12px;">
-    <div class="battery-container" style="display: flex; align-items: center;">
-      <div class="battery-icon">
-        <div class="battery-level" id="batteryLevel"></div>
-      </div>
-      <span id="batteryStatus" style="margin-left: 8px;">Battery: N/A</span>
+    <div id="gpsLocation" style="font-size: 14px; color: #aaa;">GPS: Waiting...</div>
+
+    <div id="switchDisplay" style="display: flex; gap: 10px;">
+      <div class="switchCircle" id="sw1">1</div>
+      <div class="switchCircle" id="sw2">2</div>
     </div>
 
-    <div id="fanStatusCircle" style="
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background-color: green;
-      box-shadow: 0 0 4px #0005;
-      transition: background-color 0.3s;
-    " title="Fan status"></div>
+    <div id="tempStatus" style="font-size: 14px; color: #aaa;">Temp: Waiting...</div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="battery-container">
+        <div class="battery-icon">
+          <div class="battery-level" id="batteryLevel"></div>
+        </div>
+        <span id="batteryStatus" style="margin-left: 8px;">Battery: N/A</span>
+      </div>
+      <div id="fanStatusCircle" style="
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background-color: green;
+        box-shadow: 0 0 4px #0005;
+        transition: background-color 0.3s;
+      " title="Fan status"></div>
+    </div>
   </div>
-</div>
 
-
+  
   <div class="container">
     <div id="left_joystick" class="joystick-zone"></div>
     <div class="center-controls">
@@ -421,77 +315,107 @@ const char defaultMode2_html[] = R"rawliteral(
       level.style.backgroundColor = percent > 50 ? '#4caf50' : percent > 20 ? '#ff9800' : '#f44336';
     }
 
+    function updateGPSLocation(lat, lon) {
+      document.getElementById("gpsLocation").textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    }
+
+    function updateTempDisplay(temp) {
+      document.getElementById("tempStatus").textContent = `Temp: ${temp.toFixed(1)}°C`;
+    }
+
+function updateFanStatus(relayState) {
+  try {
+    const data = typeof relayState === 'string' ? JSON.parse(relayState) : relayState;
+    const status = data.relay;
+
+   // console.log("Relay status:", status);
+    const fanCircle = document.getElementById('fanStatusCircle');
+    fanCircle.style.backgroundColor = (status === 'on') ? 'blue' : 'green';
+  } catch (e) {
+    console.error("Failed to update fan status:", e);
+  }
+}
+
+
+
+
+    function updateSwitchDisplay(data) {
+      const display = document.getElementById("switchStateDisplay");
+      if (!display) return;
+      const s1 = data.switch1 ? 1 : 0;
+      const s2 = data.switch2 ? 1 : 0;
+   
+    }
+
     window.onload = () => {
       createJoystick("left_joystick", 1);
       createJoystick("right_joystick", 2);
     };
-function updateGPSLocation(lat, lon) {
-  document.getElementById("gpsLocation").textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-}
 
-function updateTempDisplay(temp) {
-  document.getElementById("tempStatus").textContent = `Temp: ${temp.toFixed(1)}°C`;
-}
+  setInterval(() => {
+    // GPS request
+    fetch('/gps')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch GPS data');
+            }
+            return res.json();
+        })
+        .then(data => updateGPSLocation(data.lat, data.lon))
+        .catch(console.warn);
 
-function updateFanStatus(relayState) {
-  const fanCircle = document.getElementById('fanStatusCircle');
-  fanCircle.style.backgroundColor = (relayState === 'on') ? 'blue' : 'green';
-}
+    // Temperature request
+    fetch('/temp')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch temperature data');
+            }
+            return res.json();
+        })
+        .then(data => updateTempDisplay(data.temp))
+        .catch(console.warn);
 
-setInterval(() => {
-  // Fetch GPS
-  fetch('/gps')
-    .then(res => res.json())
-    .then(data => updateGPSLocation(data.lat, data.lon))
-    .catch(err => {
-      console.warn('GPS fetch failed:', err);
-      document.getElementById("gpsLocation").textContent = "GPS: Error";
+    // Battery request
+    fetch('/battery')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch battery data');
+            }
+            return res.json();
+        })
+        .then(data => updateBatteryDisplay(data.percent))
+        .catch(console.warn);
+
+    // Relay status request
+    fetch('/relayStatus')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch relay status');
+            }
+            return res.json();
+        })
+        .then(data => updateFanStatus(data))
+        .catch(console.warn);
+
+    // Switches request
+//fetch('/switches').then(res => res.json()).then(data => updateSwitchDisplay(data)).catch(console.warn);
+    fetchSwitchStates();
+
+}, 3000);
+    function fetchSwitchStates() {
+  fetch('/getSwitchStates')
+    .then(response => response.json())
+    .then(data => {
+      updateSwitchDisplay(data);
+
+      // Update switch circles visually
+      document.getElementById('sw1').style.backgroundColor = data.switch1 ? '#4caf50' : '#bbb';
+      document.getElementById('sw2').style.backgroundColor = data.switch2 ? '#4caf50' : '#bbb';
+    })
+    .catch(error => {
+      console.error('Error fetching switch states:', error);
     });
-
-  // Fetch Temp
-  fetch('/temp')
-    .then(res => res.json())
-    .then(data => updateTempDisplay(data.temp))
-    .catch(err => {
-      console.warn('Temp fetch failed:', err);
-      document.getElementById("tempStatus").textContent = "Temp: Error";
-    });
-
-  // Fetch Relay Status
-  fetch('/relayStatus')
-    .then(res => res.json())
-    .then(data => updateFanStatus(data.relay))
-    .catch(err => console.warn('Fan status fetch failed:', err));
-
-  // ✅ Fetch Battery
-  fetch('/battery')
-    .then(res => res.json())
-    .then(data => updateBatteryDisplay(data.percent))
-    .catch(err => {
-      console.warn('Battery fetch failed:', err);
-      document.getElementById("batteryStatus").textContent = "Battery: Error";
-    });
-}, 5000);
-
-// Initial fetches
-fetch('/gps')
-  .then(res => res.json())
-  .then(data => updateGPSLocation(data.lat, data.lon));
-
-fetch('/temp')
-  .then(res => res.json())
-  .then(data => updateTempDisplay(data.temp));
-
-fetch('/relayStatus')
-  .then(res => res.json())
-  .then(data => updateFanStatus(data.relay));
-
-// ✅ Initial Battery fetch
-fetch('/battery')
-  .then(res => res.json())
-  .then(data => updateBatteryDisplay(data.percent));
-
-
+}
   </script>
 </body>
 </html>

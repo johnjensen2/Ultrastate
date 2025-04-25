@@ -8,6 +8,7 @@
 #include <WebSerial.h>
 //#include <DallasTemperature.h>
 #include <set>
+#include <ArduinoJson.h>
 
 // =================== Mine ===================
 #include "debug.h"
@@ -21,6 +22,7 @@
 #include "gps.h"
 #include "tempControl.h"
 #include "BatteryControls.h"
+#include"SwitchControls.h"
 
 // Variables
 int linearPot1Value = 0;
@@ -48,7 +50,6 @@ float TEMP_MIN = 20.0; // Minimum temperature to turn off cooling
 float TEMP_MAX = 30.0; // Maximum temperature to turn on cooling
 
 
-
 void IRAM_ATTR handleEncoderMotor1() {
   int stateA = digitalRead(ENCODER1_A);
   int stateB = digitalRead(ENCODER1_B);
@@ -74,6 +75,12 @@ void IRAM_ATTR handleEncoderMotor2() {
     pulse_count_motor2--;  // Reverse
     direction_motor2 = -1;
   }
+}
+
+String getSwitchStatesJSON() {
+  bool s1 = digitalRead(toggleSwitchPins[0]) == LOW;
+  bool s2 = digitalRead(toggleSwitchPins[1]) == LOW;
+  return "{\"s1\":" + String(s1 ? 1 : 0) + ",\"s2\":" + String(s2 ? 1 : 0) + "}";
 }
 
 
@@ -178,8 +185,8 @@ server.on("/gps", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "application/json", json);
   });
 
-  server.on("/relayStatus", HTTP_GET, [](AsyncWebServerRequest *request){
-  String status = tempControl::isRelayOn() ? "on" : "off";
+server.on("/relayStatus", HTTP_GET, [](AsyncWebServerRequest *request){
+  String status = tempControl::relayIsOn ? "on" : "off";// Use the instance of tempControl
   request->send(200, "application/json", "{\"relay\":\"" + status + "\"}");
 });
 
@@ -190,15 +197,30 @@ server.on("/battery", HTTP_GET, [](AsyncWebServerRequest *request){
     String("{\"percent\":") + percent + ",\"voltage\":" + voltage + "}");
 });
 
+server.on("/getSwitchStates", HTTP_GET, [](AsyncWebServerRequest *request){
+  StaticJsonDocument<100> doc;
+  doc["switch1"] = digitalRead(SWITCH1_PIN);
+  doc["switch2"] = digitalRead(SWITCH2_PIN);
+  String json;
+  serializeJson(doc, json);
+  request->send(200, "application/json", json);
+});
+server.on("/switchState", HTTP_GET, [](AsyncWebServerRequest *request){
+  request->send(200, "application/json", getSwitchStatesJSON());
+});
+
   server.onNotFound([](AsyncWebServerRequest *request) {
-        request->redirect("/");
-    });
+    String json = "{\"error\": \"Route not found\"}";
+    request->send(404, "application/json", json);
+});
+
 
 }
 
 
 
 void runDefaultLoop(){
+
   // Check for OTA updates
   ArduinoOTA.handle();
   updateGPS(); 

@@ -5,7 +5,7 @@
 #include <TinyGPSPlus.h>
 #include "pinConfig.h"
 #include "gps.h"
-
+#include "BatteryControls.h"
 
 
 extern MPU6050 mpu;
@@ -44,9 +44,6 @@ void sendTelemetryPacket(const String& message) {
 // =================== Sensor Reading ===================
 
 
-float readBatteryVoltage() {
-  return analogRead(BATTERY_PIN) * (3.3 / 4095.0) * 2; // Adjust if using voltage divider
-}
 
 
 // float readBatteryVoltage() {

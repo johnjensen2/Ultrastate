@@ -32,6 +32,7 @@
 #include "aiTrainingMode.h"
 #include "imu.h"
 #include "tempControl.h"
+#include "BatteryControls.h"
 
 const int toggleSwitchPins[] = {SWITCH1_PIN, SWITCH2_PIN}; // Example pins
 const int numSwitches = 2;
@@ -193,7 +194,7 @@ void setup() {
   initGPS(); // Initialize GPS
   setupIMU(); // Initialize IMU
   tempControl::begin(TEMP_SENSOR_PIN, RELAY_PIN); // Initialize temperature control
-  
+
 
 
   checkForDuplicatePins();

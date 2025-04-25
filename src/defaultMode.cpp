@@ -20,7 +20,7 @@
 #include "servoControl.h"
 #include "gps.h"
 #include "tempControl.h"
-
+#include "BatteryControls.h"
 
 // Variables
 int linearPot1Value = 0;
@@ -181,6 +181,13 @@ server.on("/gps", HTTP_GET, [](AsyncWebServerRequest *request){
   server.on("/relayStatus", HTTP_GET, [](AsyncWebServerRequest *request){
   String status = tempControl::isRelayOn() ? "on" : "off";
   request->send(200, "application/json", "{\"relay\":\"" + status + "\"}");
+});
+
+server.on("/battery", HTTP_GET, [](AsyncWebServerRequest *request){
+  float voltage = readBatteryVoltage();
+  int percent = getBatteryPercentage();
+  request->send(200, "application/json", 
+    String("{\"percent\":") + percent + ",\"voltage\":" + voltage + "}");
 });
 
   server.onNotFound([](AsyncWebServerRequest *request) {

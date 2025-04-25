@@ -462,6 +462,15 @@ setInterval(() => {
     .then(res => res.json())
     .then(data => updateFanStatus(data.relay))
     .catch(err => console.warn('Fan status fetch failed:', err));
+
+  // ✅ Fetch Battery
+  fetch('/battery')
+    .then(res => res.json())
+    .then(data => updateBatteryDisplay(data.percent))
+    .catch(err => {
+      console.warn('Battery fetch failed:', err);
+      document.getElementById("batteryStatus").textContent = "Battery: Error";
+    });
 }, 5000);
 
 // Initial fetches
@@ -476,6 +485,11 @@ fetch('/temp')
 fetch('/relayStatus')
   .then(res => res.json())
   .then(data => updateFanStatus(data.relay));
+
+// ✅ Initial Battery fetch
+fetch('/battery')
+  .then(res => res.json())
+  .then(data => updateBatteryDisplay(data.percent));
 
 
   </script>

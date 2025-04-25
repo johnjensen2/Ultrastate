@@ -3,12 +3,13 @@
 #include <HardwareSerial.h>
 #include <TinyGPSPlus.h>
 #include <Arduino.h>
+#include "pinConfig.h"
 
 extern TinyGPSPlus gps;
 extern HardwareSerial GPS_Serial;
 
 void initGPS() {
-  GPS_Serial.begin(9600, SERIAL_8N1, 16, 17); // RX=16, TX=17
+  GPS_Serial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);  // Correct pin usage
 }
 
 void updateGPS() {

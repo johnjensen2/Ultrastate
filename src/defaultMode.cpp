@@ -18,6 +18,8 @@
 #include "pinConfig.h"
 #include "wifiManager.h"
 #include "servoControl.h"
+#include "gps.h"
+#include "tempControl.h"
 
 
 // Variables
@@ -155,6 +157,32 @@ server.on("/closeServo2", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", "Emergency Stop Activated");
 });
 
+server.on("/gps", HTTP_GET, [](AsyncWebServerRequest *request){
+  if (gps.location.isValid()) {
+    String json = "{";
+    json += "\"lat\":" + String(gps.location.lat(), 6) + ",";
+    json += "\"lon\":" + String(gps.location.lng(), 6);
+    json += "}";
+    request->send(200, "application/json", json);
+  } else {
+    request->send(200, "application/json", "{\"lat\":null,\"lon\":null}");
+  }
+});
+/* server.on("/gps", HTTP_GET, [](AsyncWebServerRequest *request){
+  request->send(200, "text/plain", getGPSData());
+}); */
+  server.on("/temp", HTTP_GET, [](AsyncWebServerRequest *request) {
+    float temp = tempControl::getTemperature();
+
+    String json = "{\"temp\":" + String(temp, 1) + "}";
+    request->send(200, "application/json", json);
+  });
+
+  server.on("/relayStatus", HTTP_GET, [](AsyncWebServerRequest *request){
+  String status = tempControl::isRelayOn() ? "on" : "off";
+  request->send(200, "application/json", "{\"relay\":\"" + status + "\"}");
+});
+
   server.onNotFound([](AsyncWebServerRequest *request) {
         request->redirect("/");
     });
@@ -166,6 +194,7 @@ server.on("/closeServo2", HTTP_GET, [](AsyncWebServerRequest *request){
 void runDefaultLoop(){
   // Check for OTA updates
   ArduinoOTA.handle();
+  updateGPS(); 
   // Check ?
   delay(updateDelay);
 }

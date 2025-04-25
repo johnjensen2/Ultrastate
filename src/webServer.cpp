@@ -182,6 +182,7 @@ const char defaultMode2_html[] = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
   <title>Tank Control - Dark Mode</title>
   <style>
     body {
@@ -267,23 +268,17 @@ const char defaultMode2_html[] = R"rawliteral(
     .estop:hover, .stopAll:hover {
       background-color: #555;
     }
-    .drop-row {
+    .drop-buttons {
       display: flex;
       justify-content: center;
-      margin-top: -20px;
-      margin-bottom: 10px;
+      align-items: center;
+      margin-top: -45px;
+      gap: 150px;
+      width: 100%;
     }
-
-.drop-buttons {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: -45px;
-  gap: 150px;
-  width: 100%;
-}
-  background-color: #555;
-color: white;
+    .drop {
+      background-color: #555;
+      color: white;
       font-size: 18px;
       padding: 12px 24px;
       margin: 0 20px;
@@ -291,15 +286,15 @@ color: white;
       border-radius: 8px;
       cursor: pointer;
       transition: background-color 0.3s;
-      }
-.dropBtn.red {
-  background-color: red;
-}
-    .dropBtn:disabled {
+    }
+    .drop.red {
+      background-color: red;
+    }
+    .drop:disabled {
       background-color: #777;
       cursor: not-allowed;
     }
-    .dropBtn:hover:not(:disabled) {
+    .drop:hover:not(:disabled) {
       background-color: #555;
     }
   </style>
@@ -307,14 +302,31 @@ color: white;
 </head>
 <body>
   <div class="top-bar">
-    <h3>RC Tank Control</h3>
-    <div class="battery-container">
+    <div>
+<h3>RC Tank Control</h3>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+  <div id="gpsLocation" style="font-size: 14px; color: #aaa;">GPS: Waiting...</div>
+  <div id="tempStatus" style="font-size: 14px; color: #aaa;">Temp: Waiting...</div>
+  
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div class="battery-container" style="display: flex; align-items: center;">
       <div class="battery-icon">
         <div class="battery-level" id="batteryLevel"></div>
       </div>
-      <span id="batteryStatus">Battery: N/A</span>
+      <span id="batteryStatus" style="margin-left: 8px;">Battery: N/A</span>
     </div>
+
+    <div id="fanStatusCircle" style="
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: green;
+      box-shadow: 0 0 4px #0005;
+      transition: background-color 0.3s;
+    " title="Fan status"></div>
   </div>
+</div>
+
 
   <div class="container">
     <div id="left_joystick" class="joystick-zone"></div>
@@ -325,14 +337,15 @@ color: white;
     <div id="right_joystick" class="joystick-zone"></div>
   </div>
 
-<div class="drop-buttons">
-  <button class="drop estop" id="drop1" onclick="sendServoCommand(1)">DROP 1</button>
-  <button class="drop estop" id="drop2" onclick="sendServoCommand(2)">DROP 2</button>
-</div>
+  <div class="drop-buttons">
+    <button class="drop red" id="drop1" onclick="sendServoCommand(1)">DROP 1</button>
+    <button class="drop red" id="drop2" onclick="sendServoCommand(2)">DROP 2</button>
+  </div>
 
   <script>
     const deadZone = 0.2;
     let estopActive = false;
+    const servoStates = { drop1: false, drop2: false };
 
     function sendMotorCommand(motor, speed, direction) {
       fetch(`/updateMotor${motor}?speed=${speed}&direction=${direction}`);
@@ -350,43 +363,24 @@ color: white;
       btn.classList.add("active");
       btn.textContent = "STOPPED";
     }
-// servoControl.js
 
-const servoStates = {
-  drop1: false,
-  drop2: false
-};
+    function sendServoCommand(dropNum) {
+      const buttonId = `drop${dropNum}`;
+      const button = document.getElementById(buttonId);
+      const isOpen = servoStates[buttonId];
 
-function sendServoCommand(dropNum) {
-  const buttonId = `drop${dropNum}`;
-  const button = document.getElementById(buttonId);
-  const isOpen = servoStates[buttonId];
+      servoStates[buttonId] = !isOpen;
 
-  // Toggle state
-  servoStates[buttonId] = !isOpen;
-
-  if (servoStates[buttonId]) {
-    // If it's open now, allow retraction
-    button.style.backgroundColor = 'green';
-    button.textContent = `OPEN ${dropNum}`;
-    sendServoOpen(dropNum);
-  } else {
-    // If it's closed now, show as DROP again
-    button.style.backgroundColor = 'red';
-    button.textContent = `CLOSE ${dropNum}`;
-    sendServoClose(dropNum);
-  }
-}
-
-function sendServoOpen(dropNum) {
-  fetch(`/openServo${dropNum}`);
-}
-
-function sendServoClose(dropNum) {
-  fetch(`/closeServo${dropNum}`);
-}
-
-
+      if (servoStates[buttonId]) {
+        button.style.backgroundColor = 'green';
+        button.textContent = `OPEN ${dropNum}`;
+        fetch(`/openServo${dropNum}`);
+      } else {
+        button.style.backgroundColor = 'red';
+        button.textContent = `DROP ${dropNum}`;
+        fetch(`/closeServo${dropNum}`);
+      }
+    }
 
     function createJoystick(id, motorNumber) {
       const zone = document.getElementById(id);
@@ -420,17 +414,127 @@ function sendServoClose(dropNum) {
       });
     }
 
+    function updateBatteryDisplay(percent) {
+      const level = document.getElementById("batteryLevel");
+      document.getElementById("batteryStatus").textContent = `Battery: ${percent}%`;
+      level.style.width = `${percent}%`;
+      level.style.backgroundColor = percent > 50 ? '#4caf50' : percent > 20 ? '#ff9800' : '#f44336';
+    }
+
     window.onload = () => {
       createJoystick("left_joystick", 1);
       createJoystick("right_joystick", 2);
     };
+function updateGPSLocation(lat, lon) {
+  document.getElementById("gpsLocation").textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+}
 
-    function updateBatteryDisplay(percent) {
-      document.getElementById("batteryStatus").textContent = `Battery: ${percent}%`;
-      document.getElementById("batteryLevel").style.width = `${percent}%`;
-      const level = document.getElementById("batteryLevel");
-      level.style.backgroundColor = percent > 50 ? '#4caf50' : percent > 20 ? '#ff9800' : '#f44336';
+function updateTempDisplay(temp) {
+  document.getElementById("tempStatus").textContent = `Temp: ${temp.toFixed(1)}°C`;
+}
+
+function updateFanStatus(relayState) {
+  const fanCircle = document.getElementById('fanStatusCircle');
+  fanCircle.style.backgroundColor = (relayState === 'on') ? 'blue' : 'green';
+}
+
+setInterval(() => {
+  // Fetch GPS
+  fetch('/gps')
+    .then(res => res.json())
+    .then(data => updateGPSLocation(data.lat, data.lon))
+    .catch(err => {
+      console.warn('GPS fetch failed:', err);
+      document.getElementById("gpsLocation").textContent = "GPS: Error";
+    });
+
+  // Fetch Temp
+  fetch('/temp')
+    .then(res => res.json())
+    .then(data => updateTempDisplay(data.temp))
+    .catch(err => {
+      console.warn('Temp fetch failed:', err);
+      document.getElementById("tempStatus").textContent = "Temp: Error";
+    });
+
+  // Fetch Relay Status
+  fetch('/relayStatus')
+    .then(res => res.json())
+    .then(data => updateFanStatus(data.relay))
+    .catch(err => console.warn('Fan status fetch failed:', err));
+}, 5000);
+
+// Initial fetches
+fetch('/gps')
+  .then(res => res.json())
+  .then(data => updateGPSLocation(data.lat, data.lon));
+
+fetch('/temp')
+  .then(res => res.json())
+  .then(data => updateTempDisplay(data.temp));
+
+fetch('/relayStatus')
+  .then(res => res.json())
+  .then(data => updateFanStatus(data.relay));
+
+
+  </script>
+</body>
+</html>
+)rawliteral";
+
+const char gps_test_html[] = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RC Tank Control</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #0f0;
+      text-align: center;
+      padding: 20px;
     }
+    #gps {
+      font-size: 1.5em;
+      margin-top: 40px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin-top: 20px;
+      background-color: #222;
+      color: #0f0;
+      border: 1px solid #0f0;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0f0;
+      color: #111;
+    }
+  </style>
+</head>
+<body>
+  <h1>RC Tank Control</h1>
+  <div id="gps">Fetching GPS...</div>
+  <button onclick="fetchGPS()">Refresh GPS</button>
+
+  <script>
+    async function fetchGPS() {
+      try {
+        const res = await fetch('/gps');
+        const text = await res.text();
+        document.getElementById('gps').innerText = text;
+      } catch (err) {
+        document.getElementById('gps').innerText = 'Error fetching GPS';
+      }
+    }
+
+    // Auto-refresh every 5 seconds
+    setInterval(fetchGPS, 5000);
+    window.onload = fetchGPS;
   </script>
 </body>
 </html>

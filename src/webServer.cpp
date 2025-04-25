@@ -81,6 +81,11 @@ const char defaultMode2_html[] = R"rawliteral(
       background-color: #1f1f1f;
       border-bottom: 2px solid #333;
     }
+    .top-bar * {
+  font-size: 20px;
+  color: #aaa;
+}
+
     .battery-container {
       display: flex;
       align-items: center;
@@ -177,8 +182,8 @@ const char defaultMode2_html[] = R"rawliteral(
       background-color: #555;
     }
     .switchCircle {
-      width: 40px;
-      height: 40px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       background-color: #bbb;
       color: white;
@@ -193,33 +198,36 @@ const char defaultMode2_html[] = R"rawliteral(
   <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 </head>
 <body>
-  <div class="top-bar">
-    <div id="gpsLocation" style="font-size: 14px; color: #aaa;">GPS: Waiting...</div>
+<div class="top-bar">
+  <div id="gpsLocation">GPS: Waiting...</div>
 
-    <div id="switchDisplay" style="display: flex; gap: 10px;">
-      <div class="switchCircle" id="sw1">1</div>
-      <div class="switchCircle" id="sw2">2</div>
-    </div>
+  <div id="switchDisplay" style="display: flex; gap: 10px;">
+    <div class="switchCircle" id="sw1">1</div>
+    <div class="switchCircle" id="sw2">2</div>
+  </div>
 
-    <div id="tempStatus" style="font-size: 14px; color: #aaa;">Temp: Waiting...</div>
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <div id="tempStatus">Temp: Waiting...</div>
+    <div id="fanStatusCircle" style="
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: green;
+      box-shadow: 0 0 4px #0005;
+      transition: background-color 0.3s;
+    " title="Fan status"></div>
+  </div>
 
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div class="battery-container">
-        <div class="battery-icon">
-          <div class="battery-level" id="batteryLevel"></div>
-        </div>
-        <span id="batteryStatus" style="margin-left: 8px;">Battery: N/A</span>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div class="battery-container">
+      <div class="battery-icon">
+        <div class="battery-level" id="batteryLevel"></div>
       </div>
-      <div id="fanStatusCircle" style="
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background-color: green;
-        box-shadow: 0 0 4px #0005;
-        transition: background-color 0.3s;
-      " title="Fan status"></div>
+      <span id="batteryStatus">Battery: N/A</span>
     </div>
   </div>
+</div>
+
 
   
   <div class="container">
@@ -235,6 +243,10 @@ const char defaultMode2_html[] = R"rawliteral(
     <button class="drop red" id="drop1" onclick="sendServoCommand(1)">DROP 1</button>
     <button class="drop red" id="drop2" onclick="sendServoCommand(2)">DROP 2</button>
   </div>
+
+<div style="text-align: center; margin-top: 160px; font-size: 14px; color: #aaa;">
+  yourname@email.com
+</div>
 
   <script>
     const deadZone = 0.2;

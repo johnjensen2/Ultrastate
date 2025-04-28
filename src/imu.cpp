@@ -2,29 +2,14 @@
 #include <Wire.h>
 #include <MPU6050.h>
 #include "calibrationStorage.h"
+#include "pinConfig.h"
+#include "BatteryControls.h"
+#include "gps.h"
+#include "telemetry.h"
+
 
 extern MPU6050 mpu;
 
-void setupIMU() {
-  Wire.begin();  // Initialize I2C
-  mpu.initialize();
-    applyIMUOffsets() ;
-  if (!mpu.testConnection()) {
-    Serial.println("MPU6050 connection failed!");
-  } else {
-    Serial.println("MPU6050 connected.");
-  }
-}
-
-String getIMUData() {
-  int16_t ax, ay, az;
-  int16_t gx, gy, gz;
-  
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-  
-  return "IMU:AX=" + String(ax) + " AY=" + String(ay) + " AZ=" + String(az) +
-         " GX=" + String(gx) + " GY=" + String(gy) + " GZ=" + String(gz);
-}
 
 void calibrateIMU() {
   Serial.println("Starting IMU calibration...");

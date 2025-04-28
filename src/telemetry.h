@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-// Struct to package telemetry data
 struct TelemetryPacket {
   float latitude;
   float longitude;
@@ -12,6 +11,16 @@ struct TelemetryPacket {
   int rpm_motor2;
   float batteryVoltage;
   String systemStatus;
+
+  // IMU Data
+  float accelX;
+  float accelY;
+  float accelZ;
+  float gyroX;
+  float gyroY;
+  float gyroZ;
+
+   bool isShaking;             // New field to report if shaking was detected
 };
 
 // Initializes telemetry system

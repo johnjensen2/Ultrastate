@@ -22,7 +22,7 @@
 #include "gps.h"
 #include "tempControl.h"
 #include "BatteryControls.h"
-#include"SwitchControls.h"
+#include "SwitchControls.h"
 
 // Variables
 int linearPot1Value = 0;
@@ -92,6 +92,8 @@ void runDefaultSetup(AsyncWebServer& server) {
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH); // Ensure relay is off at startup
 
+  setupSteeringServo() ;
+
   Serial.println("Boot Started");
   pinMode(MOTOR1_IN1, OUTPUT);
   pinMode(MOTOR1_IN2, OUTPUT);
@@ -157,6 +159,17 @@ server.on("/closeServo2", HTTP_GET, [](AsyncWebServerRequest *request){
     String json = "{\"motor1_rpm\":" + String(rpm_motor1) + ",\"motor2_rpm\":" + String(rpm_motor2) + "}";
     request->send(200, "application/json", json);
 });
+
+server.on("/steering", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("angle")) {
+        int angle = request->getParam("angle")->value().toInt();
+        setSteeringAngle(angle);  
+        request->send(200, "text/plain", "Steering angle updated");
+    } else {
+        request->send(400, "text/plain", "Missing angle parameter");
+    }
+});
+
 
   server.on("/emergencyStop", HTTP_GET, [](AsyncWebServerRequest *request){
     // Code to stop all motors

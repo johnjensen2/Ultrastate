@@ -35,7 +35,14 @@
 #define SWITCH1_PIN 36
 #define SWITCH2_PIN 37
 
-#define wsLedPin 4
+//Steering Servo
+#define STEERING_PIN 3
+
+// Drop Servos
+#define DROP_SERVO_1_PIN 12
+#define DROP_SERVO_2_PIN 13
+
+#define wsLedPin 7
 #define wsLedCount 10
 #define wsLedType WS2812B
 #define wsLedColorOrder GRB

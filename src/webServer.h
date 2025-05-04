@@ -13,4 +13,17 @@ extern const char defaultMode_html[]; // Declare it so other files know it exist
 extern const char defaultMode2_html[];
 extern const char gps_test_html[]; // Declare it so other files know it exists
 
+
+
+// Call this in setup()
+void setupServos();
+
+// Call this to control the steering servo (-90 to 90 degrees)
+void setSteeringAngle(int angle);
+
+// Optional: If you're also using drop servos
+void openServo1();
+void closeServo1();
+void openServo2();
+void closeServo2();
 #endif

@@ -4,6 +4,7 @@
 #include "pinConfig.h"
 #include "defaultMode.h"
 #include "tempControl.h"
+#include "servoControl.h"
 
 void initWebServer() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -82,9 +83,9 @@ const char defaultMode2_html[] = R"rawliteral(
       border-bottom: 2px solid #333;
     }
     .top-bar * {
-  font-size: 20px;
-  color: #aaa;
-}
+      font-size: 20px;
+      color: #aaa;
+    }
 
     .battery-container {
       display: flex;
@@ -200,12 +201,10 @@ const char defaultMode2_html[] = R"rawliteral(
 <body>
 <div class="top-bar">
   <div id="gpsLocation">GPS: Waiting...</div>
-
   <div id="switchDisplay" style="display: flex; gap: 10px;">
     <div class="switchCircle" id="sw1">1</div>
     <div class="switchCircle" id="sw2">2</div>
   </div>
-
   <div style="display: flex; align-items: center; gap: 8px;">
     <div id="tempStatus">Temp: Waiting...</div>
     <div id="fanStatusCircle" style="
@@ -217,7 +216,6 @@ const char defaultMode2_html[] = R"rawliteral(
       transition: background-color 0.3s;
     " title="Fan status"></div>
   </div>
-
   <div style="display: flex; align-items: center; gap: 12px;">
     <div class="battery-container">
       <div class="battery-icon">
@@ -228,207 +226,168 @@ const char defaultMode2_html[] = R"rawliteral(
   </div>
 </div>
 
-
-  
-  <div class="container">
-    <div id="left_joystick" class="joystick-zone"></div>
-    <div class="center-controls">
-      <button class="stopAll" onclick="stopAllMotors()">STOP ALL</button>
-      <button class="estop" id="estopBtn" onclick="emergencyStop()">EMERGENCY STOP</button>
-    </div>
-    <div id="right_joystick" class="joystick-zone"></div>
+<div class="container">
+  <div id="left_joystick" class="joystick-zone"></div>
+  <div class="center-controls">
+    <button class="stopAll" onclick="stopAllMotors()">STOP ALL</button>
+    <button class="estop" id="estopBtn" onclick="emergencyStop()">EMERGENCY STOP</button>
   </div>
+  <div id="right_joystick" class="joystick-zone"></div>
+</div>
 
-  <div class="drop-buttons">
-    <button class="drop red" id="drop1" onclick="sendServoCommand(1)">DROP 1</button>
-    <button class="drop red" id="drop2" onclick="sendServoCommand(2)">DROP 2</button>
-  </div>
+<div class="drop-buttons">
+  <button class="drop red" id="drop1" onclick="sendServoCommand(1)">DROP 1</button>
+  <button class="drop red" id="drop2" onclick="sendServoCommand(2)">DROP 2</button>
+</div>
 
 <div style="text-align: center; margin-top: 160px; font-size: 14px; color: #aaa;">
   yourname@email.com
 </div>
 
-  <script>
-    const deadZone = 0.2;
-    let estopActive = false;
-    const servoStates = { drop1: false, drop2: false };
+<script>
+  const deadZone = 0.2;
+  let estopActive = false;
+  const servoStates = { drop1: false, drop2: false };
 
-    function sendMotorCommand(motor, speed, direction) {
-      fetch(`/updateMotor${motor}?speed=${speed}&direction=${direction}`);
+  function sendMotorCommand(motor, speed, direction) {
+    fetch(`/updateMotor${motor}?speed=${speed}&direction=${direction}`);
+  }
+
+  function stopAllMotors() {
+    sendMotorCommand(1, 0, "stop");
+    sendMotorCommand(2, 0, "stop");
+  }
+
+  function emergencyStop() {
+    fetch('/emergencyStop');
+    estopActive = true;
+    const btn = document.getElementById("estopBtn");
+    btn.classList.add("active");
+    btn.textContent = "STOPPED";
+  }
+
+  function sendServoCommand(dropNum) {
+    const buttonId = `drop${dropNum}`;
+    const button = document.getElementById(buttonId);
+    const isOpen = servoStates[buttonId];
+
+    servoStates[buttonId] = !isOpen;
+
+    if (servoStates[buttonId]) {
+      button.style.backgroundColor = 'green';
+      button.textContent = `OPEN ${dropNum}`;
+      fetch(`/openServo${dropNum}`);
+    } else {
+      button.style.backgroundColor = 'red';
+      button.textContent = `DROP ${dropNum}`;
+      fetch(`/closeServo${dropNum}`);
     }
+  }
 
-    function stopAllMotors() {
-      sendMotorCommand(1, 0, "stop");
-      sendMotorCommand(2, 0, "stop");
-    }
+  function sendSteeringCommand(value) {
+    fetch(`/steering?angle=${value}`);
+  }
 
-    function emergencyStop() {
-      fetch('/emergencyStop');
-      estopActive = true;
-      const btn = document.getElementById("estopBtn");
-      btn.classList.add("active");
-      btn.textContent = "STOPPED";
-    }
+  function createJoystick(id, motorNumber) {
+    const zone = document.getElementById(id);
+    const joystick = nipplejs.create({
+      zone: zone,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      color: 'white',
+      size: 120,
+      restOpacity: 0.6,
+    });
 
-    function sendServoCommand(dropNum) {
-      const buttonId = `drop${dropNum}`;
-      const button = document.getElementById(buttonId);
-      const isOpen = servoStates[buttonId];
+    joystick.on('move', (evt, data) => {
+      if (!data || !data.vector) return;
 
-      servoStates[buttonId] = !isOpen;
+      const dy = data.vector.y;
+      const distanceY = Math.min(data.distance / (data.instance.options.size / 2), 1);
+      const absY = Math.abs(dy);
 
-      if (servoStates[buttonId]) {
-        button.style.backgroundColor = 'green';
-        button.textContent = `OPEN ${dropNum}`;
-        fetch(`/openServo${dropNum}`);
+      if (absY < deadZone) {
+        sendMotorCommand(motorNumber, 0, "stop");
       } else {
-        button.style.backgroundColor = 'red';
-        button.textContent = `DROP ${dropNum}`;
-        fetch(`/closeServo${dropNum}`);
-      }
-    }
-
-    function createJoystick(id, motorNumber) {
-      const zone = document.getElementById(id);
-      const joystick = nipplejs.create({
-        zone: zone,
-        mode: 'static',
-        position: { left: '50%', top: '50%' },
-        color: 'white',
-        size: 120,
-        restOpacity: 0.6,
-      });
-
-      joystick.on('move', (evt, data) => {
-        if (!data || !data.vector) return;
-        const dy = data.vector.y;
-        const distance = Math.min(data.distance / (data.instance.options.size / 2), 1);
-        const abs = Math.abs(dy);
-
-        if (abs < deadZone) {
-          sendMotorCommand(motorNumber, 0, "stop");
-          return;
-        }
-
-        const speed = Math.floor(2000 * abs);
+        const speed = Math.floor(2000 * absY);
         const direction = dy < 0 ? "forward" : "reverse";
         sendMotorCommand(motorNumber, speed, direction);
-      });
+      }
 
-      joystick.on('end', () => {
-        sendMotorCommand(motorNumber, 0, "stop");
-      });
-    }
+      const dx = data.vector.x;
+      const absX = Math.abs(dx);
+      if (absX > deadZone) {
+        const angle = Math.floor(dx * 90);
+        sendSteeringCommand(angle);
+      }
+    });
 
-    function updateBatteryDisplay(percent) {
-      const level = document.getElementById("batteryLevel");
-      document.getElementById("batteryStatus").textContent = `Battery: ${percent}%`;
-      level.style.width = `${percent}%`;
-      level.style.backgroundColor = percent > 50 ? '#4caf50' : percent > 20 ? '#ff9800' : '#f44336';
-    }
-
-    function updateGPSLocation(lat, lon) {
-      document.getElementById("gpsLocation").textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    }
-
-    function updateTempDisplay(temp) {
-      document.getElementById("tempStatus").textContent = `Temp: ${temp.toFixed(1)}°C`;
-    }
-
-function updateFanStatus(relayState) {
-  try {
-    const data = typeof relayState === 'string' ? JSON.parse(relayState) : relayState;
-    const status = data.relay;
-
-   // console.log("Relay status:", status);
-    const fanCircle = document.getElementById('fanStatusCircle');
-    fanCircle.style.backgroundColor = (status === 'on') ? 'blue' : 'green';
-  } catch (e) {
-    console.error("Failed to update fan status:", e);
+    joystick.on('end', () => {
+      sendMotorCommand(motorNumber, 0, "stop");
+      sendSteeringCommand(0); // Return to center when joystick released
+    });
   }
-}
 
+  function updateBatteryDisplay(percent) {
+    const level = document.getElementById("batteryLevel");
+    document.getElementById("batteryStatus").textContent = `Battery: ${percent}%`;
+    level.style.width = `${percent}%`;
+    level.style.backgroundColor = percent > 50 ? '#4caf50' : percent > 20 ? '#ff9800' : '#f44336';
+  }
 
+  function updateGPSLocation(lat, lon) {
+    document.getElementById("gpsLocation").textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+  }
 
+  function updateTempDisplay(temp) {
+    document.getElementById("tempStatus").textContent = `Temp: ${temp.toFixed(1)}°C`;
+  }
 
-    function updateSwitchDisplay(data) {
-      const display = document.getElementById("switchStateDisplay");
-      if (!display) return;
-      const s1 = data.switch1 ? 1 : 0;
-      const s2 = data.switch2 ? 1 : 0;
-   
+  function updateFanStatus(relayState) {
+    try {
+      const data = typeof relayState === 'string' ? JSON.parse(relayState) : relayState;
+      const status = data.relay;
+      const fanCircle = document.getElementById('fanStatusCircle');
+      fanCircle.style.backgroundColor = (status === 'on') ? 'blue' : 'green';
+    } catch (e) {
+      console.error("Failed to update fan status:", e);
     }
+  }
 
-    window.onload = () => {
-      createJoystick("left_joystick", 1);
-      createJoystick("right_joystick", 2);
-    };
+  function updateSwitchDisplay(data) {
+    const display = document.getElementById("switchStateDisplay");
+    if (!display) return;
+    const s1 = data.switch1 ? 1 : 0;
+    const s2 = data.switch2 ? 1 : 0;
+  }
+
+  window.onload = () => {
+    createJoystick("left_joystick", 1);
+    createJoystick("right_joystick", 2);
+  };
 
   setInterval(() => {
-    // GPS request
     fetch('/gps')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Failed to fetch GPS data');
-            }
-            return res.json();
-        })
-        .then(data => updateGPSLocation(data.lat, data.lon))
-        .catch(console.warn);
+      .then(res => res.json())
+      .then(data => updateGPSLocation(data.lat, data.lon))
+      .catch(console.warn);
 
-    // Temperature request
     fetch('/temp')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Failed to fetch temperature data');
-            }
-            return res.json();
-        })
-        .then(data => updateTempDisplay(data.temp))
-        .catch(console.warn);
+      .then(res => res.json())
+      .then(data => updateTempDisplay(data.temp))
+      .catch(console.warn);
 
-    // Battery request
     fetch('/battery')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Failed to fetch battery data');
-            }
-            return res.json();
-        })
-        .then(data => updateBatteryDisplay(data.percent))
-        .catch(console.warn);
+      .then(res => res.json())
+      .then(data => updateBatteryDisplay(data.percent))
+      .catch(console.warn);
 
-    // Relay status request
-    fetch('/relayStatus')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Failed to fetch relay status');
-            }
-            return res.json();
-        })
-        .then(data => updateFanStatus(data))
-        .catch(console.warn);
-
-    // Switches request
-//fetch('/switches').then(res => res.json()).then(data => updateSwitchDisplay(data)).catch(console.warn);
-    fetchSwitchStates();
-
-}, 3000);
-    function fetchSwitchStates() {
-  fetch('/getSwitchStates')
-    .then(response => response.json())
-    .then(data => {
-      updateSwitchDisplay(data);
-
-      // Update switch circles visually
-      document.getElementById('sw1').style.backgroundColor = data.switch1 ? '#4caf50' : '#bbb';
-      document.getElementById('sw2').style.backgroundColor = data.switch2 ? '#4caf50' : '#bbb';
-    })
-    .catch(error => {
-      console.error('Error fetching switch states:', error);
-    });
-}
-  </script>
+    fetch('/fanStatus')
+      .then(res => res.json())
+      .then(data => updateFanStatus(data))
+      .catch(console.warn);
+  }, 2000);
+</script>
 </body>
 </html>
 )rawliteral";

@@ -4,14 +4,14 @@
 // =================== Pin Configuration ===================
 
 // Motor 1 (L298N)
-#define MOTOR1_IN1 1
-#define MOTOR1_IN2 2
-#define MOTOR1_EN  42  // PWM
+#define MOTOR1_IN1 6
+#define MOTOR1_IN2 5
+#define MOTOR1_EN  4  // PWM
 
 // Motor 2 (L298N)
-#define MOTOR2_IN1 6
-#define MOTOR2_IN2 5
-#define MOTOR2_EN  4  // PWM
+#define MOTOR2_IN1 1
+#define MOTOR2_IN2 2
+#define MOTOR2_EN  42  // PWM
 
 // Encoders
 #define ENCODER1_A 8

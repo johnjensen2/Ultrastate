@@ -5,9 +5,39 @@
 
 const char* ssid = "homesweethome";
 const char* password = "johnandamy";
-const char* deviceHostname = "Water_Tank";
+const char* deviceHostname = "R.OV.E.R.";
+const char* passwordAP = "password1234";
+
+IPAddress local_IP(192, 168, 4, 1);
+IPAddress gateway(192, 168, 4, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+#define ALLOWED_SUBNET_A 192
+#define ALLOWED_SUBNET_B 168
+#define ALLOWED_SUBNET_C 1
 
 uint8_t remoteMac[6] = {0};  // Set during pairing
+
+bool isOnTrustedSubnet() {
+  IPAddress ip = WiFi.localIP();
+  return (ip[0] == ALLOWED_SUBNET_A &&
+          ip[1] == ALLOWED_SUBNET_B &&
+          ip[2] == ALLOWED_SUBNET_C);
+}
+
+void setupHotspot()
+{
+    WiFi.mode(WIFI_AP_STA);
+  
+   connectToWiFi(ssid, password);
+
+    WiFi.softAP(deviceHostname, passwordAP);
+    WiFi.softAPConfig(local_IP, gateway, subnet);
+    
+    Serial.println("Access Point Started");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.softAPIP());
+}
 
 void connectToWiFi(const char* ssid, const char* password) {
     WiFi.begin(ssid, password);
@@ -60,14 +90,19 @@ void connectToEspNow() {
 
 
 void setupOTA() {
+  IPAddress ip = WiFi.localIP();
+
+  // Only allow OTA if connected to 192.168.1.x network
+if (!isOnTrustedSubnet()) {
+  Serial.println("🚫 OTA disabled - not on trusted subnet");
+  return;
+}
+
+  ArduinoOTA.setHostname(deviceHostname);
+
   ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH) {
-      type = "sketch";
-    } else {
-      type = "filesystem";
-    }
-    Serial.println("Start updating " + type);
+    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
+    Serial.println("Start OTA update: " + type);
   });
 
   ArduinoOTA.onEnd([]() {
@@ -80,18 +115,13 @@ void setupOTA() {
 
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      Serial.println("Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      Serial.println("Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      Serial.println("Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      Serial.println("Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      Serial.println("End Failed");
-    }
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
 
   ArduinoOTA.begin();
+  Serial.println("✅ OTA Ready - waiting for upload...");
 }

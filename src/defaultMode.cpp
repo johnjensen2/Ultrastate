@@ -87,7 +87,8 @@ String getSwitchStatesJSON() {
 void runDefaultSetup(AsyncWebServer& server) {
   Serial.begin(115200);
 
-  connectToWiFi(ssid, password);
+  //connectToWiFi(ssid, password);
+  setupHotspot();
   setupOTA();
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH); // Ensure relay is off at startup

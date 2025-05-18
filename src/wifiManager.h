@@ -10,5 +10,5 @@ void connectToWiFi(const char* ssid, const char* password);
 void connectToEspNow(); 
 bool isWiFiConnected();
 void setupOTA();
-
+void setupHotspot();
 #endif // WIFI_MANAGER_H

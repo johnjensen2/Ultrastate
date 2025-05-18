@@ -15,6 +15,7 @@
 //#include <OneWire.h>
 //#include <DallasTemperature.h>
 #include <set>
+#include "SPIFFS.h"
 
 // =================== Mine ===================
 #include "defaultMode.h"
@@ -193,6 +194,12 @@ void checkForDuplicatePins() {
 
 void setup() {
   Serial.begin(115200);
+
+  if (!SPIFFS.begin(true)) {
+  Serial.println("An error occurred while mounting SPIFFS");
+  return;
+}
+
   initGPS(); // Initialize GPS
   setupIMU(); // Initialize IMU
   tempControl::begin(TEMP_SENSOR_PIN, RELAY_PIN); // Initialize temperature control

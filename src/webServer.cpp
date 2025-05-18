@@ -196,7 +196,7 @@ const char defaultMode2_html[] = R"rawliteral(
       transition: background-color 0.3s ease;
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+ <script src="/js/nipplejs.min.js"></script>
 </head>
 <body>
 <div class="top-bar">

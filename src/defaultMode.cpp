@@ -9,7 +9,7 @@
 //#include <DallasTemperature.h>
 #include <set>
 #include <ArduinoJson.h>
-
+#include "SPIFFS.h"
 // =================== Mine ===================
 #include "debug.h"
 #include "calibrationMode.h"
@@ -120,6 +120,10 @@ void runDefaultSetup(AsyncWebServer& server) {
   Serial.print("IP Address: ");
   Serial.println(WiFi.softAPIP());
  
+ server.on("/js/nipplejs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+  request->send(SPIFFS, "/js/nipplejs.min.js", "application/javascript");
+});
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", defaultMode2_html);  // No processor used here
   });

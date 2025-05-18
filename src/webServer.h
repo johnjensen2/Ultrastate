@@ -12,7 +12,7 @@ extern const char index_html[];
 extern const char defaultMode_html[]; // Declare it so other files know it exists
 extern const char defaultMode2_html[];
 extern const char gps_test_html[]; // Declare it so other files know it exists
-
+extern const char ota_html[] ;
 
 
 // Call this in setup()

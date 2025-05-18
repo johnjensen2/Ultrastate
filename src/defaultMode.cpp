@@ -10,6 +10,7 @@
 #include <set>
 #include <ArduinoJson.h>
 #include "SPIFFS.h"
+#include <Update.h>
 // =================== Mine ===================
 #include "debug.h"
 #include "calibrationMode.h"
@@ -120,6 +121,10 @@ void runDefaultSetup(AsyncWebServer& server) {
   Serial.print("IP Address: ");
   Serial.println(WiFi.softAPIP());
  
+server.on("/ota", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", ota_html);
+});
+
  server.on("/js/nipplejs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
   request->send(SPIFFS, "/js/nipplejs.min.js", "application/javascript");
 });
@@ -232,7 +237,37 @@ server.on("/switchState", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(404, "application/json", json);
 });
 
-
+server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request){
+    bool shouldReboot = !Update.hasError();
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain",
+        shouldReboot ? "Update OK. Rebooting..." : "Update Failed!");
+    response->addHeader("Connection", "close");
+    request->send(response);
+    if (shouldReboot) {
+        delay(1000);
+        ESP.restart();
+    }
+}, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data,
+      size_t len, bool final){
+    if (!index){
+        Serial.printf("Update Start: %s\n", filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            Update.printError(Serial);
+        }
+    }
+    if (!Update.hasError()) {
+        if (Update.write(data, len) != len) {
+            Update.printError(Serial);
+        }
+    }
+    if (final) {
+        if (Update.end(true)) {
+            Serial.println("Update complete.");
+        } else {
+            Update.printError(Serial);
+        }
+    }
+});
 }
 
 

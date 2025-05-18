@@ -93,10 +93,10 @@ void setupOTA() {
   IPAddress ip = WiFi.localIP();
 
   // Only allow OTA if connected to 192.168.1.x network
-if (!isOnTrustedSubnet()) {
+/* if (!isOnTrustedSubnet()) {
   Serial.println("🚫 OTA disabled - not on trusted subnet");
   return;
-}
+} */
 
   ArduinoOTA.setHostname(deviceHostname);
 

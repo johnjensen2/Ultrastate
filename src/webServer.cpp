@@ -448,3 +448,25 @@ const char gps_test_html[] = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
+const char ota_html[] = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 OTA Update</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 30px; }
+    input[type="file"] { margin: 20px; }
+    progress { width: 100%; }
+  </style>
+</head>
+<body>
+  <h2>OTA Update</h2>
+  <form method="POST" action="/update" enctype="multipart/form-data">
+    <input type="file" name="firmware" required><br>
+    <input type="submit" value="Upload">
+  </form>
+</body>
+</html>
+    )rawliteral";

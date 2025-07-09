@@ -3,10 +3,11 @@
 #include <esp_now.h>
 #include <ArduinoOTA.h>
 
-const char* ssid = "homesweethome";
-const char* password = "johnandamy";
-const char* deviceHostname = "R.OV.E.R.";
-const char* passwordAP = "password1234";
+#include "secrets.h"
+
+const char* deviceHostname = DEVICE_HOST_NAME;
+const char* passwordAP = AP_PASSWORD;
+
 
 IPAddress local_IP(192, 168, 4, 1);
 IPAddress gateway(192, 168, 4, 1);
@@ -29,7 +30,7 @@ void setupHotspot()
 {
     WiFi.mode(WIFI_AP_STA);
   
-   connectToWiFi(ssid, password);
+   connectToWiFi(WIFI_SSID , WIFI_PASSWORD );
 
     WiFi.softAP(deviceHostname, passwordAP);
     WiFi.softAPConfig(local_IP, gateway, subnet);

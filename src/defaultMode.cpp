@@ -122,7 +122,7 @@ void runDefaultSetup(AsyncWebServer& server) {
   Serial.println(WiFi.softAPIP());
  
 server.on("/ota", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", ota_html);
+    request->send(200, "text/html", ota_html);
 });
 
  server.on("/js/nipplejs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
